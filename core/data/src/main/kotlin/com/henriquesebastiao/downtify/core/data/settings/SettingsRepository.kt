@@ -1,0 +1,74 @@
+package com.henriquesebastiao.downtify.core.data.settings
+
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import com.henriquesebastiao.downtify.core.model.StreamQuality
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+
+@Singleton
+class SettingsRepository @Inject constructor(private val store: DataStore<Preferences>) {
+    val settings: Flow<UserSettings> = store.data.map { prefs ->
+        val defaults = UserSettings()
+        UserSettings(
+            theme = enumOr(prefs[THEME], defaults.theme),
+            dynamicColor = prefs[DYNAMIC_COLOR] ?: defaults.dynamicColor,
+            wifiQuality = StreamQuality.decode(prefs[WIFI_QUALITY]) ?: defaults.wifiQuality,
+            mobileQuality = StreamQuality.decode(prefs[MOBILE_QUALITY]) ?: defaults.mobileQuality,
+            libraryLayout = enumOr(prefs[LIBRARY_LAYOUT], defaults.libraryLayout),
+            librarySort = enumOr(prefs[LIBRARY_SORT], defaults.librarySort),
+        )
+    }
+
+    suspend fun setTheme(value: ThemeMode) {
+        store.edit { it[THEME] = value.name }
+    }
+
+    suspend fun setDynamicColor(value: Boolean) {
+        store.edit { it[DYNAMIC_COLOR] = value }
+    }
+
+    suspend fun setWifiQuality(value: StreamQuality) {
+        store.edit { it[WIFI_QUALITY] = value.encode() }
+    }
+
+    suspend fun setMobileQuality(value: StreamQuality) {
+        store.edit { it[MOBILE_QUALITY] = value.encode() }
+    }
+
+    suspend fun setLibraryLayout(value: LibraryLayout) {
+        store.edit { it[LIBRARY_LAYOUT] = value.name }
+    }
+
+    suspend fun setLibrarySort(value: LibrarySort) {
+        store.edit { it[LIBRARY_SORT] = value.name }
+    }
+
+    /** A stable id for this install, sent as the WebSocket's `client_id`. */
+    suspend fun clientId(): String {
+        store.data.first()[CLIENT_ID]?.let { return it }
+        val id = UUID.randomUUID().toString()
+        store.edit { if (it[CLIENT_ID] == null) it[CLIENT_ID] = id }
+        return store.data.first()[CLIENT_ID] ?: id
+    }
+
+    private inline fun <reified E : Enum<E>> enumOr(value: String?, default: E): E =
+        enumValues<E>().firstOrNull { it.name == value } ?: default
+
+    private companion object {
+        val THEME = stringPreferencesKey("theme")
+        val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val WIFI_QUALITY = stringPreferencesKey("wifi_quality")
+        val MOBILE_QUALITY = stringPreferencesKey("mobile_quality")
+        val LIBRARY_LAYOUT = stringPreferencesKey("library_layout")
+        val LIBRARY_SORT = stringPreferencesKey("library_sort")
+        val CLIENT_ID = stringPreferencesKey("client_id")
+    }
+}
