@@ -4,6 +4,9 @@ The official Android client for [Downtify](https://github.com/henriquesebastiao/
 
 Status: **phase 1** (connect & pair, library sync, browsing, search, streaming, play reports). Offline downloads, server search, casting and widgets come later — see [docs/roadmap.md](docs/roadmap.md).
 
+> [!IMPORTANT]
+> This app is currently in the development and testing phase; it will contain bugs. Integration with Downtify is also still being developed and tested.
+
 ## Requirements
 
 - JDK 17 or newer (the build targets Java 17).
