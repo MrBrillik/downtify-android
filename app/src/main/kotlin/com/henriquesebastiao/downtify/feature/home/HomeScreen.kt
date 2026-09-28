@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -66,11 +69,23 @@ fun HomeRoute(
     onOpenRecent: (RecentContext) -> Unit,
     onOpenAlbum: (String) -> Unit,
     onSeeAll: () -> Unit,
+    onOpenDiscover: () -> Unit,
+    onOpenPodcasts: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeScreen(state, onOpenSettings, onOpenRecent, onOpenAlbum, onSeeAll, viewModel::refresh, modifier)
+    HomeScreen(
+        state,
+        onOpenSettings,
+        onOpenRecent,
+        onOpenAlbum,
+        onSeeAll,
+        viewModel::refresh,
+        modifier,
+        onOpenDiscover,
+        onOpenPodcasts,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,6 +98,8 @@ fun HomeScreen(
     onSeeAll: () -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenDiscover: () -> Unit = {},
+    onOpenPodcasts: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier,
@@ -140,7 +157,89 @@ fun HomeScreen(
                         }
                     }
                 }
+                if (!state.loading) {
+                    item(key = "shortcuts") {
+                        Shortcuts(
+                            showDiscover = state.showDiscover && !state.libraryEmpty,
+                            showPodcasts = state.showPodcasts,
+                            onOpenDiscover = onOpenDiscover,
+                            onOpenPodcasts = onOpenPodcasts,
+                        )
+                    }
+                }
             }
+        }
+    }
+}
+
+/** Where Discover and Podcasts live: the four tabs stay as designed. */
+@Composable
+private fun Shortcuts(
+    showDiscover: Boolean,
+    showPodcasts: Boolean,
+    onOpenDiscover: () -> Unit,
+    onOpenPodcasts: () -> Unit,
+) {
+    if (!showDiscover && !showPodcasts) return
+    Column(
+        Modifier.padding(horizontal = Spacing.screen).padding(top = Spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        if (showDiscover) {
+            Shortcut(
+                icon = DowntifyIcons.Explore,
+                title = stringResource(R.string.home_shortcut_discover),
+                body = stringResource(R.string.home_shortcut_discover_body),
+                onClick = onOpenDiscover,
+            )
+        }
+        if (showPodcasts) {
+            Shortcut(
+                icon = DowntifyIcons.Podcasts,
+                title = stringResource(R.string.home_shortcut_podcasts),
+                body = stringResource(R.string.home_shortcut_podcasts_body),
+                onClick = onOpenPodcasts,
+            )
+        }
+    }
+}
+
+@Composable
+private fun Shortcut(icon: Int, title: String, body: String, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.heightIn(min = 72.dp).padding(horizontal = Spacing.lg, vertical = Spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+        ) {
+            Box(
+                Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painterResource(icon),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    body,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                painterResource(DowntifyIcons.ChevronRight),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -126,11 +126,12 @@ fun CoverRow(
     round: Boolean = false,
     placeholderIcon: Int = DowntifyIcons.Album,
     coverSize: Dp = 56.dp,
+    subtitleLines: Int = 1,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     ListItem(
         headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = subtitle?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
+        supportingContent = subtitle?.let { { Text(it, maxLines = subtitleLines, overflow = TextOverflow.Ellipsis) } },
         leadingContent = {
             CoverArt(
                 url = coverUrl,

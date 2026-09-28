@@ -112,4 +112,12 @@ object DowntifyIcons {
     @DrawableRes val Storage = R.drawable.ic_storage
 
     @DrawableRes val Cloud = R.drawable.ic_cloud
+
+    @DrawableRes val SkipBack = R.drawable.ic_replay_10
+
+    @DrawableRes val SkipForward = R.drawable.ic_forward_30
+
+    @DrawableRes val Podcasts = R.drawable.ic_podcasts
+
+    @DrawableRes val Explore = R.drawable.ic_explore
 }

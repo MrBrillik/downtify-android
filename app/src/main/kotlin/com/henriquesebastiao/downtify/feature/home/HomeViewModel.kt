@@ -29,6 +29,9 @@ data class HomeUiState(
     val recentlyAdded: List<Album> = emptyList(),
     val refreshing: Boolean = false,
     val libraryEmpty: Boolean = false,
+    /** What the server can do (`capabilities`): the shortcuts below "Recently added". */
+    val showDiscover: Boolean = false,
+    val showPodcasts: Boolean = false,
 )
 
 @HiltViewModel
@@ -43,9 +46,8 @@ class HomeViewModel @Inject constructor(
         combine(library.library, library.likedIds, ::Pair),
         recents.recents(),
         library.syncStatus,
-        server.connection,
-        server.session,
-    ) { (snapshot, likedIds), recentList, syncStatus, connection, session ->
+        combine(server.connection, server.session, server.serverInfo, ::Triple),
+    ) { (snapshot, likedIds), recentList, syncStatus, (connection, session, info) ->
         val newest = snapshot?.albums.orEmpty().sortedByDescending { it.added }
         val jump = recentList.ifEmpty {
             buildList {
@@ -68,6 +70,8 @@ class HomeViewModel @Inject constructor(
             recentlyAdded = newest.take(RECENTLY_ADDED_SIZE),
             refreshing = syncStatus == SyncStatus.Syncing,
             libraryEmpty = snapshot?.isEmpty == true,
+            showDiscover = info?.capabilities?.discover == true,
+            showPodcasts = info?.capabilities?.podcasts == true,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), HomeUiState())
 

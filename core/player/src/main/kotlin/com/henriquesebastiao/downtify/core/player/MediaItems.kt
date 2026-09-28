@@ -4,8 +4,11 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
+import com.henriquesebastiao.downtify.core.model.PodcastEpisode
+import com.henriquesebastiao.downtify.core.model.PodcastShow
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 
@@ -14,6 +17,10 @@ object MediaItems {
     /** Resolved to the real stream URL (and quality) only when the player opens it: see [StreamResolver]. */
     const val SCHEME = "downtify"
     private const val HOST = "track"
+    private const val MS_PER_SECOND = 1000L
+    private const val EXTRA_EPISODE_ID = "downtify.episode_id"
+    private const val EXTRA_SHOW_ID = "downtify.show_id"
+    private const val EXTRA_FILE = "downtify.file"
     private const val EXTRA_CONTEXT_TYPE = "downtify.context_type"
     private const val EXTRA_CONTEXT_ID = "downtify.context_id"
 
@@ -45,6 +52,54 @@ object MediaItems {
                 .build(),
         )
         .build()
+
+    /**
+     * A downloaded podcast episode, played from the server's file (`/downloads/...`). The address also
+     * goes in the request metadata: controllers' items lose their URI on the way to the service.
+     * Null while the server doesn't have the file yet.
+     */
+    fun episode(episode: PodcastEpisode, show: PodcastShow, baseUrl: String): MediaItem? {
+        val file = episode.filename ?: return null
+        val url = Uri.parse(EpisodeIds.fileUrl(baseUrl, file))
+        return MediaItem.Builder()
+            .setMediaId(EpisodeIds.mediaId(episode.id))
+            .setUri(url)
+            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(url).build())
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(episode.title)
+                    .setArtist(show.name)
+                    .setAlbumTitle(show.name)
+                    .setDurationMs(episode.durationSeconds * MS_PER_SECOND)
+                    .setArtworkUri(show.artworkUrl.takeIf { it.isNotBlank() }?.let(Uri::parse))
+                    .setIsPlayable(true)
+                    .setIsBrowsable(false)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE)
+                    .setExtras(
+                        Bundle().apply {
+                            putLong(EXTRA_EPISODE_ID, episode.id)
+                            putLong(EXTRA_SHOW_ID, show.id)
+                            putString(EXTRA_FILE, file)
+                        },
+                    )
+                    .build(),
+            )
+            .build()
+    }
+
+    /** The episode [item] stands for, or null for a song. */
+    fun episodeOf(item: MediaItem): PlayingEpisode? {
+        if (!EpisodeIds.isEpisode(item.mediaId)) return null
+        val extras = item.mediaMetadata.extras
+        return PlayingEpisode(
+            episodeId = EpisodeIds.episodeIdOf(item.mediaId) ?: return null,
+            showId = extras?.getLong(EXTRA_SHOW_ID) ?: 0,
+            title = item.mediaMetadata.title?.toString().orEmpty(),
+            showName = item.mediaMetadata.artist?.toString().orEmpty(),
+            artworkUrl = item.mediaMetadata.artworkUri?.toString().orEmpty(),
+            file = extras?.getString(EXTRA_FILE).orEmpty(),
+        )
+    }
 
     fun contextMetadata(context: PlaybackContext): MediaMetadata = MediaMetadata.Builder()
         .setTitle(context.title)

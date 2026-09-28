@@ -56,6 +56,7 @@ import com.henriquesebastiao.downtify.core.model.RecentContext
 import com.henriquesebastiao.downtify.feature.artist.ArtistRoute
 import com.henriquesebastiao.downtify.feature.collection.CollectionRoute
 import com.henriquesebastiao.downtify.feature.connect.ConnectRoute
+import com.henriquesebastiao.downtify.feature.discover.DiscoverRoute
 import com.henriquesebastiao.downtify.feature.downloads.DownloadsRoute
 import com.henriquesebastiao.downtify.feature.home.HomeRoute
 import com.henriquesebastiao.downtify.feature.library.LibraryNavigation
@@ -66,6 +67,8 @@ import com.henriquesebastiao.downtify.feature.player.NowPlayingActions
 import com.henriquesebastiao.downtify.feature.player.NowPlayingScreen
 import com.henriquesebastiao.downtify.feature.player.PlayerViewModel
 import com.henriquesebastiao.downtify.feature.player.QueueSheet
+import com.henriquesebastiao.downtify.feature.podcasts.PodcastsRoute
+import com.henriquesebastiao.downtify.feature.podcasts.ShowRoute
 import com.henriquesebastiao.downtify.feature.search.SearchNavigation
 import com.henriquesebastiao.downtify.feature.search.SearchRoute
 import com.henriquesebastiao.downtify.feature.settings.SettingsRoute
@@ -73,13 +76,17 @@ import com.henriquesebastiao.downtify.ui.common.CoverUrls
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.navigation.AlbumRoute
 import com.henriquesebastiao.downtify.ui.navigation.ArtistRoute as ArtistDestination
+import com.henriquesebastiao.downtify.ui.navigation.DiscoverRoute as DiscoverDestination
 import com.henriquesebastiao.downtify.ui.navigation.DownloadsRoute as DownloadsDestination
 import com.henriquesebastiao.downtify.ui.navigation.HomeRoute as HomeDestination
 import com.henriquesebastiao.downtify.ui.navigation.LibraryRoute as LibraryDestination
 import com.henriquesebastiao.downtify.ui.navigation.LikedRoute
 import com.henriquesebastiao.downtify.ui.navigation.PlaylistRoute
+import com.henriquesebastiao.downtify.ui.navigation.PodcastsRoute as PodcastsDestination
+import com.henriquesebastiao.downtify.ui.navigation.SearchQueryRoute
 import com.henriquesebastiao.downtify.ui.navigation.SearchRoute as SearchDestination
 import com.henriquesebastiao.downtify.ui.navigation.SettingsRoute as SettingsDestination
+import com.henriquesebastiao.downtify.ui.navigation.ShowRoute as ShowDestination
 import com.henriquesebastiao.downtify.ui.navigation.TopLevelDestination
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -184,11 +191,30 @@ private fun AppNavHost(navController: NavHostController) {
                 onOpenRecent = { navController.navigate(routeFor(it)) },
                 onOpenAlbum = toAlbum,
                 onSeeAll = { navController.navigateTopLevel(TopLevelDestination.Library) },
+                onOpenDiscover = { navController.navigate(DiscoverDestination) },
+                onOpenPodcasts = { navController.navigate(PodcastsDestination) },
             )
         }
         composable<SearchDestination> {
             SearchRoute(SearchNavigation(onAlbum = toAlbum, onArtist = toArtist, onPlaylist = toPlaylist))
         }
+        // The same screen with something typed in (a suggestion from Discover); its query is the route's argument.
+        composable<SearchQueryRoute> {
+            SearchRoute(SearchNavigation(onAlbum = toAlbum, onArtist = toArtist, onPlaylist = toPlaylist))
+        }
+        composable<DiscoverDestination> {
+            DiscoverRoute(
+                onBack = navController::popBackStack,
+                onOpenInSearch = { navController.navigate(SearchQueryRoute(it)) },
+            )
+        }
+        composable<PodcastsDestination> {
+            PodcastsRoute(
+                onBack = navController::popBackStack,
+                onShow = { navController.navigate(ShowDestination(it)) },
+            )
+        }
+        composable<ShowDestination> { ShowRoute(onBack = navController::popBackStack) }
         composable<LibraryDestination> {
             LibraryRoute(
                 LibraryNavigation(
@@ -273,6 +299,10 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
                 onOpenContext = { routeFor(it)?.let(onNavigate) },
                 onGoToAlbum = { onNavigate(AlbumRoute(it)) },
                 onGoToArtist = { onNavigate(ArtistDestination(it)) },
+                onSkipBack = player::skipBack,
+                onSkipForward = player::skipForward,
+                onCycleSpeed = player::cycleSpeed,
+                onGoToShow = { onNavigate(ShowDestination(it)) },
             ),
             modifier = Modifier.graphicsLayer {
                 val p = backProgress

@@ -39,8 +39,11 @@ import com.henriquesebastiao.downtify.ui.common.PreviewData
 /** Sits above the navigation bar while something is loaded; tapping it opens Now Playing. */
 @Composable
 fun MiniPlayer(state: PlayerState, onOpen: () -> Unit, onTogglePlay: () -> Unit, modifier: Modifier = Modifier) {
-    val track = state.track ?: return
-    val coverUrl = LocalCoverUrls.current.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL)
+    val track = state.track
+    val episode = state.episode
+    if (track == null && episode == null) return
+    val coverUrl = episode?.artworkUrl?.ifBlank { null }
+        ?: track?.let { LocalCoverUrls.current.track(it.id.takeIf { _ -> it.hasCover }, ServerUrls.COVER_SMALL) }
     val colors = rememberCoverColors(coverUrl)
     Surface(
         color = colors.surface,
@@ -69,13 +72,13 @@ fun MiniPlayer(state: PlayerState, onOpen: () -> Unit, onTogglePlay: () -> Unit,
                     CoverArt(url = coverUrl, contentDescription = null, modifier = Modifier.size(48.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            track.displayTitle,
+                            track?.displayTitle ?: episode?.title.orEmpty(),
                             style = MaterialTheme.typography.titleSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            track.displayArtist,
+                            track?.displayArtist ?: episode?.showName.orEmpty(),
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.onSurfaceVariant,
                             maxLines = 1,

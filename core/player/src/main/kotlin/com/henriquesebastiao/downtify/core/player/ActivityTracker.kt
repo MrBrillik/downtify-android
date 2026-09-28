@@ -76,9 +76,11 @@ internal class ActivityTracker(
     private fun post(state: PlaybackActivityState) {
         val item = player.currentMediaItem
         val meta = player.mediaMetadata
+        val episode = item?.let(MediaItems::episodeOf)
         val track = item?.let {
             ActivityTrack(
-                trackId = it.mediaId,
+                trackId = it.mediaId.takeIf { id -> episode == null && id.isNotEmpty() },
+                file = episode?.file,
                 title = meta.title?.toString(),
                 artist = meta.artist?.toString(),
                 album = meta.albumTitle?.toString(),

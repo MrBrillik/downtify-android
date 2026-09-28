@@ -20,7 +20,9 @@ enum class PlaybackActivityState(val wireName: String) {
 
 /** The song [PlaybackActivityReporter] reports; null fields are left out. */
 data class ActivityTrack(
-    val trackId: String,
+    /** A library song's id; null for a podcast episode, which is named by [file]. */
+    val trackId: String?,
+    val file: String? = null,
     val title: String?,
     val artist: String?,
     val album: String?,
@@ -46,7 +48,14 @@ class PlaybackActivityReporter @Inject constructor(
             track = if (state == PlaybackActivityState.Stopped || track == null) {
                 ActivityTrackDto()
             } else {
-                ActivityTrackDto(track.trackId, track.title, track.artist, track.album, track.durationSeconds)
+                ActivityTrackDto(
+                    trackId = track.trackId,
+                    file = track.file,
+                    title = track.title,
+                    artist = track.artist,
+                    album = track.album,
+                    duration = track.durationSeconds,
+                )
             },
             position = positionSeconds.coerceAtLeast(0),
         )

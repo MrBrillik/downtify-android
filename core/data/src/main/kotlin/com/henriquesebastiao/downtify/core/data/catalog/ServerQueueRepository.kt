@@ -33,7 +33,7 @@ class ServerQueueRepository @Inject constructor(private val sessions: SessionSto
     suspend fun refresh() {
         val session = sessions.current ?: return
         try {
-            val rows = CatalogJson.jobs(apis.create(session.baseUrl).queue())
+            val rows = CatalogJson.jobs(apis.createWeb(session.baseUrl).queue())
             state.value = rows.associateBy { it.songId }
         } catch (e: IOException) {
             Log.d(TAG, "Queue not refreshed", e)

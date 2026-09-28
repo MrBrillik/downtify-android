@@ -24,6 +24,8 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.henriquesebastiao.downtify.core.data.activity.PlaybackActivityReporter
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
+import com.henriquesebastiao.downtify.core.data.podcasts.PodcastsRepository
+import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -62,12 +64,15 @@ class PlaybackService : MediaSessionService() {
 
     @Inject lateinit var activityReporter: PlaybackActivityReporter
 
+    @Inject lateinit var podcasts: PodcastsRepository
+
     @Inject lateinit var sessions: SessionStore
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var session: MediaSession? = null
     private var listens: ListenTracker? = null
     private var activity: ActivityTracker? = null
+    private var episodes: EpisodeProgressTracker? = null
     private val likeCommand = SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)
 
     override fun onCreate() {
@@ -80,6 +85,9 @@ class PlaybackService : MediaSessionService() {
                 true,
             )
             .setHandleAudioBecomingNoisy(true)
+            // For podcast episodes: the buttons in the app and the notification skip by these.
+            .setSeekBackIncrementMs(SKIP_BACK_MS)
+            .setSeekForwardIncrementMs(SKIP_FORWARD_MS)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
 
@@ -99,6 +107,7 @@ class PlaybackService : MediaSessionService() {
 
         listens = ListenTracker(player, reporter, scope).also { it.start() }
         activity = ActivityTracker(player, activityReporter, scope).also { it.start() }
+        episodes = EpisodeProgressTracker(player, podcasts, scope).also { it.start() }
         keepLikeButtonCurrent(player)
         stopWhenSignedOut(player)
     }
@@ -125,6 +134,7 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         listens?.stop()
         activity?.stop()
+        episodes?.stop()
         scope.cancel()
         session?.run {
             player.release()
@@ -154,9 +164,17 @@ class PlaybackService : MediaSessionService() {
                 }
             },
         )
-        combine(currentId, library.likedIds) { id, liked -> id != null && id in liked }
+        // Songs get a heart; an episode has nothing to like.
+        combine(currentId, library.likedIds) { id, liked ->
+            when {
+                EpisodeIds.isEpisode(id) -> null
+                else -> id != null && id in liked
+            }
+        }
             .distinctUntilChanged()
-            .onEach { liked -> session?.setMediaButtonPreferences(listOf(likeButton(liked))) }
+            .onEach { liked ->
+                session?.setMediaButtonPreferences(if (liked == null) emptyList() else listOf(likeButton(liked)))
+            }
             .launchIn(scope)
     }
 
@@ -185,7 +203,7 @@ class PlaybackService : MediaSessionService() {
         ): ListenableFuture<SessionResult> {
             if (customCommand.customAction == ACTION_TOGGLE_LIKE) {
                 val id = session.player.currentMediaItem?.mediaId
-                if (id != null) {
+                if (id != null && !EpisodeIds.isEpisode(id)) {
                     val liked = id in library.likedIds.value
                     scope.launch { library.setLiked(id, !liked) }
                 }
@@ -206,6 +224,10 @@ class PlaybackService : MediaSessionService() {
             val snapshot = library.library.value
             val baseUrl = sessions.current?.baseUrl
             val resolved = mediaItems.mapNotNull { item ->
+                // An episode carries its file's address in the request metadata.
+                if (EpisodeIds.isEpisode(item.mediaId)) {
+                    return@mapNotNull item.requestMetadata.mediaUri?.let { item.buildUpon().setUri(it).build() }
+                }
                 snapshot?.byId?.get(item.mediaId)?.let { MediaItems.from(it, baseUrl) }
                     ?: item.takeIf {
                         it.mediaId.isNotEmpty()
@@ -217,5 +239,7 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val ACTION_TOGGLE_LIKE = "com.henriquesebastiao.downtify.TOGGLE_LIKE"
+        const val SKIP_BACK_MS = 10_000L
+        const val SKIP_FORWARD_MS = 30_000L
     }
 }

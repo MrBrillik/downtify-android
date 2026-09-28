@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.session.ServerRepository
 import com.henriquesebastiao.downtify.core.model.Lyrics
+import com.henriquesebastiao.downtify.core.model.PlaybackSpeeds
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.core.player.PlayerState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,6 +48,9 @@ class PlayerViewModel @Inject constructor(
     fun next() = player.next()
     fun previous() = player.previous()
     fun seekTo(positionMs: Long) = player.seekTo(positionMs)
+    fun skipBack() = player.skipBack()
+    fun skipForward() = player.skipForward()
+    fun cycleSpeed() = player.setSpeed(PlaybackSpeeds.next(state.value.speed))
     fun toggleShuffle() = player.toggleShuffle()
     fun cycleRepeat() = player.cycleRepeat()
     fun skipTo(index: Int) = player.skipTo(index)

@@ -15,6 +15,10 @@ Things the app needs from the server that it doesn't offer yet, and places where
 
 The web UI's album search exists in the server's code (`api.py`, `search_albums_endpoint`) and the reference only mentions it in passing (`search_albums` preference). The app uses it for the albums under "Not in your library yet". It answers `[]` when the user turned album search off, which the app shows as "no albums". Worth a section in the reference, with the album summary's fields.
 
+### A paired phone can't subscribe to a podcast
+
+`POST /api/podcasts/subscribe`, `PATCH`/`DELETE /api/podcasts/shows/{id}` and `DELETE /api/podcasts/episodes/{id}` are admin-only (`auth.py`, the `ADMIN` rules for `/api/podcasts/`), and a device is never an admin, even when the account it belongs to is. So the app can list shows and episodes, play, download an episode on demand and save progress, but not add or remove a show or an episode's file. Letting a device act for an admin account (or a per-account "may manage podcasts" switch) would let the app subscribe from a pasted feed or Spotify link, as the web page does.
+
 ## Nice to have
 
 ### Already-downloaded results

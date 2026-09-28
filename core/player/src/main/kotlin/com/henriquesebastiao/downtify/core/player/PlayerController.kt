@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.annotation.OptIn
 import androidx.media3.common.C
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -14,6 +15,8 @@ import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.library.RecentsRepository
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
+import com.henriquesebastiao.downtify.core.model.PodcastEpisode
+import com.henriquesebastiao.downtify.core.model.PodcastShow
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -63,7 +66,7 @@ class PlayerController @Inject constructor(
 
     /** The playing track and context, without position ticks. */
     val nowPlaying: StateFlow<NowPlayingRef> = mutableState
-        .map { NowPlayingRef(it.track?.id, it.isPlaying, it.context) }
+        .map { NowPlayingRef(it.track?.id, it.episode?.episodeId, it.isPlaying, it.context) }
         .distinctUntilChanged()
         .stateIn(scope, SharingStarted.Eagerly, NowPlayingRef())
 
@@ -111,6 +114,7 @@ class PlayerController @Inject constructor(
             val baseUrl = sessions.current?.baseUrl
             val start = if (shuffle && startIndex == 0) tracks.indices.random() else startIndex.coerceIn(tracks.indices)
             player.setMediaItems(tracks.map { MediaItems.from(it, baseUrl) }, start, C.TIME_UNSET)
+            player.setPlaybackSpeed(1f)
             player.shuffleModeEnabled = shuffle
             player.playlistMetadata = MediaItems.contextMetadata(from)
             player.prepare()
@@ -119,6 +123,30 @@ class PlayerController @Inject constructor(
             recents.record(from, tracks[start].takeIf { it.hasCover }?.id ?: tracks.firstOrNull { it.hasCover }?.id)
         }
     }
+
+    /** Plays a downloaded episode from where the server says the user stopped. */
+    fun playEpisode(episode: PodcastEpisode, show: PodcastShow) {
+        val baseUrl = sessions.current?.baseUrl ?: return
+        val item = MediaItems.episode(episode, show, baseUrl) ?: return
+        main.launch {
+            val player = connect()
+            player.setMediaItem(item, (episode.resumeAtSeconds ?: 0) * MS_PER_SECOND)
+            player.shuffleModeEnabled = false
+            player.repeatMode = Player.REPEAT_MODE_OFF
+            player.playlistMetadata = MediaMetadata.EMPTY
+            player.prepare()
+            player.play()
+            mutableState.update { it.copy(error = null) }
+        }
+    }
+
+    /** 10 seconds back, for an episode. */
+    fun skipBack() = command { it.seekBack() }
+
+    /** 30 seconds forward, for an episode. */
+    fun skipForward() = command { it.seekForward() }
+
+    fun setSpeed(speed: Float) = command { it.setPlaybackSpeed(speed) }
 
     fun togglePlayPause() = command {
         if (it.isPlaying) {
@@ -165,7 +193,8 @@ class PlayerController @Inject constructor(
         val player = controller ?: return
         val snapshot = library.library.value
         val item = player.currentMediaItem
-        val track = item?.mediaId?.let { snapshot?.byId?.get(it) }
+        val episode = item?.let(MediaItems::episodeOf)
+        val track = if (episode == null) item?.mediaId?.let { snapshot?.byId?.get(it) } else null
         val queue = (0 until player.mediaItemCount).map { i ->
             val entry = player.getMediaItemAt(i)
             QueueEntry(
@@ -178,11 +207,15 @@ class PlayerController @Inject constructor(
         mutableState.update { old ->
             old.copy(
                 track = track,
+                episode = episode,
+                speed = player.playbackParameters.speed,
                 isPlaying = player.isPlaying,
                 isBuffering = player.playbackState == Player.STATE_BUFFERING,
                 positionMs = player.currentPosition.coerceAtLeast(0),
                 durationMs = player.duration.takeIf { it != C.TIME_UNSET }
-                    ?: ((track?.duration ?: 0.0) * 1000).toLong(),
+                    ?: ((track?.duration ?: 0.0) * 1000).toLong().takeIf { it > 0 }
+                    ?: item?.mediaMetadata?.durationMs
+                    ?: 0L,
                 shuffle = player.shuffleModeEnabled,
                 repeat = when (player.repeatMode) {
                     Player.REPEAT_MODE_ALL -> RepeatMode.All
@@ -194,7 +227,11 @@ class PlayerController @Inject constructor(
                 context = MediaItems.contextOf(player.playlistMetadata),
                 quality = item?.mediaId?.let(resolver::qualityOf),
                 fromPhone = item?.mediaId?.let(resolver::isLocal) == true,
-                error = if (old.track?.id != track?.id) null else old.error,
+                error = if (old.track?.id != track?.id || old.episode?.episodeId != episode?.episodeId) {
+                    null
+                } else {
+                    old.error
+                },
             )
         }
         if (player.isPlaying) startTicker() else ticker?.cancel()
@@ -227,6 +264,7 @@ class PlayerController @Inject constructor(
     }
 
     private companion object {
+        const val MS_PER_SECOND = 1000L
         const val TICK_MS = 500L
         val NETWORK_ERRORS = setOf(
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,

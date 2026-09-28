@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
@@ -31,6 +33,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +68,7 @@ import com.henriquesebastiao.downtify.core.model.formatDuration
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.player.PlaybackError
 import com.henriquesebastiao.downtify.core.player.PlayerState
+import com.henriquesebastiao.downtify.core.player.PlayingEpisode
 import com.henriquesebastiao.downtify.core.player.RepeatMode
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.common.PreviewData
@@ -82,6 +86,10 @@ data class NowPlayingActions(
     val onOpenLyrics: () -> Unit = {},
     val onOpenQueue: () -> Unit = {},
     val onOpenContext: (PlaybackContext) -> Unit = {},
+    val onSkipBack: () -> Unit = {},
+    val onSkipForward: () -> Unit = {},
+    val onCycleSpeed: () -> Unit = {},
+    val onGoToShow: (Long) -> Unit = {},
     val onGoToAlbum: (String) -> Unit = {},
     val onGoToArtist: (String) -> Unit = {},
 )
@@ -94,10 +102,17 @@ fun NowPlayingScreen(
     actions: NowPlayingActions,
     modifier: Modifier = Modifier,
 ) {
-    val track = state.track ?: return
+    val track = state.track
+    val episode = state.episode
+    if (track == null && episode == null) return
     val coverUrls = LocalCoverUrls.current
-    val coverUrl = coverUrls.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_LARGE)
-    val colors = rememberCoverColors(coverUrls.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL))
+    // An episode's artwork is the publisher's own, at whatever size they serve.
+    val coverUrl = episode?.artworkUrl?.ifBlank { null }
+        ?: track?.let { coverUrls.track(it.id.takeIf { _ -> it.hasCover }, ServerUrls.COVER_LARGE) }
+    val colors = rememberCoverColors(
+        episode?.artworkUrl?.ifBlank { null }
+            ?: track?.let { coverUrls.track(it.id.takeIf { _ -> it.hasCover }, ServerUrls.COVER_SMALL) },
+    )
 
     Surface(color = colors.surface, contentColor = colors.onSurface, modifier = modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -106,7 +121,7 @@ fun NowPlayingScreen(
                 Modifier.fillMaxSize().padding(horizontal = Spacing.lg),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Header(state.context, track.albumId, track.artistId, colors, actions)
+                Header(state.context, track?.albumId.orEmpty(), track?.artistId.orEmpty(), episode, colors, actions)
                 Spacer(Modifier.weight(0.3f))
                 CoverArt(
                     url = coverUrl,
@@ -120,13 +135,30 @@ fun NowPlayingScreen(
                         .shadow(24.dp, MaterialTheme.shapes.extraLarge),
                 )
                 Spacer(Modifier.weight(0.4f))
-                TitleRow(track.displayTitle, track.displayArtist, isLiked, colors, {
-                    actions.onGoToArtist(track.artistId)
-                }, actions.onToggleLike)
+                TitleRow(
+                    title = track?.displayTitle ?: episode?.title.orEmpty(),
+                    artist = track?.displayArtist ?: episode?.showName.orEmpty(),
+                    isLiked = isLiked.takeIf { episode == null },
+                    colors = colors,
+                    onArtist = {
+                        if (episode !=
+                            null
+                        ) {
+                            actions.onGoToShow(episode.showId)
+                        } else {
+                            actions.onGoToArtist(track?.artistId.orEmpty())
+                        }
+                    },
+                    onToggleLike = actions.onToggleLike,
+                )
                 SeekBar(state, colors, actions.onSeek)
-                Controls(state, colors, actions)
+                if (episode != null) EpisodeControls(state, colors, actions) else Controls(state, colors, actions)
                 Text(
-                    sourceLine(serverName, track.codec, state.quality, state.fromPhone),
+                    if (track != null) {
+                        sourceLine(serverName, track.codec, state.quality, state.fromPhone)
+                    } else {
+                        stringResource(R.string.player_source_unknown, serverName)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -142,18 +174,21 @@ fun NowPlayingScreen(
                     )
                 }
                 Spacer(Modifier.weight(0.3f))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    IconButton(onClick = actions.onOpenLyrics) {
-                        Icon(
-                            painterResource(DowntifyIcons.Lyrics),
-                            contentDescription = stringResource(R.string.player_lyrics),
-                        )
-                    }
-                    IconButton(onClick = actions.onOpenQueue) {
-                        Icon(
-                            painterResource(DowntifyIcons.Queue),
-                            contentDescription = stringResource(R.string.player_queue),
-                        )
+                // Lyrics and a queue are for songs; an episode is one item.
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), horizontalArrangement = Arrangement.End) {
+                    if (episode == null) {
+                        IconButton(onClick = actions.onOpenLyrics) {
+                            Icon(
+                                painterResource(DowntifyIcons.Lyrics),
+                                contentDescription = stringResource(R.string.player_lyrics),
+                            )
+                        }
+                        IconButton(onClick = actions.onOpenQueue) {
+                            Icon(
+                                painterResource(DowntifyIcons.Queue),
+                                contentDescription = stringResource(R.string.player_queue),
+                            )
+                        }
                     }
                 }
             }
@@ -166,6 +201,7 @@ private fun Header(
     context: PlaybackContext?,
     albumId: String,
     artistId: String,
+    episode: PlayingEpisode?,
     colors: CoverColors,
     actions: NowPlayingActions,
 ) {
@@ -176,10 +212,28 @@ private fun Header(
         Column(
             Modifier
                 .weight(1f)
-                .then(if (context != null) Modifier.clickable { actions.onOpenContext(context) } else Modifier),
+                .then(
+                    when {
+                        episode != null -> Modifier.clickable { actions.onGoToShow(episode.showId) }
+                        context != null -> Modifier.clickable { actions.onOpenContext(context) }
+                        else -> Modifier
+                    },
+                ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (context != null) {
+            if (episode != null) {
+                Text(
+                    stringResource(R.string.player_playing_from_podcast).uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant,
+                )
+                Text(
+                    episode.showName,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else if (context != null) {
                 Text(
                     stringResource(playingFromLabel(context.type)).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
@@ -199,6 +253,16 @@ private fun Header(
                 Icon(painterResource(DowntifyIcons.MoreVert), contentDescription = stringResource(R.string.action_more))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                if (episode != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.player_go_to_show)) },
+                        leadingIcon = { Icon(painterResource(DowntifyIcons.Podcasts), contentDescription = null) },
+                        onClick = {
+                            menu = false
+                            actions.onGoToShow(episode.showId)
+                        },
+                    )
+                }
                 if (albumId.isNotEmpty()) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.track_go_to_album)) },
@@ -228,7 +292,7 @@ private fun Header(
 private fun TitleRow(
     title: String,
     artist: String,
-    isLiked: Boolean,
+    isLiked: Boolean?,
     colors: CoverColors,
     onArtist: () -> Unit,
     onToggleLike: () -> Unit,
@@ -248,18 +312,73 @@ private fun TitleRow(
                 modifier = Modifier.clickable(onClick = onArtist),
             )
         }
-        IconToggleButton(
-            checked = isLiked,
-            onCheckedChange = { onToggleLike() },
-            colors = iconToggleButtonColors(checkedContentColor = MaterialTheme.colorScheme.primary),
-        ) {
-            Icon(
-                painterResource(if (isLiked) DowntifyIcons.FavoriteFilled else DowntifyIcons.Favorite),
-                contentDescription = stringResource(if (isLiked) R.string.player_unlike else R.string.player_like),
-            )
+        // Nothing to like on an episode.
+        if (isLiked != null) {
+            IconToggleButton(
+                checked = isLiked,
+                onCheckedChange = { onToggleLike() },
+                colors = iconToggleButtonColors(checkedContentColor = MaterialTheme.colorScheme.primary),
+            ) {
+                Icon(
+                    painterResource(if (isLiked) DowntifyIcons.FavoriteFilled else DowntifyIcons.Favorite),
+                    contentDescription = stringResource(if (isLiked) R.string.player_unlike else R.string.player_like),
+                )
+            }
         }
     }
 }
+
+/** An episode: speed, 10 s back, play, 30 s forward — in place of shuffle, previous, next and repeat. */
+@Composable
+private fun EpisodeControls(state: PlayerState, colors: CoverColors, actions: NowPlayingActions) {
+    val round = IconButtonDefaults.filledTonalIconButtonColors(
+        containerColor = colors.onSurface.copy(alpha = 0.12f),
+        contentColor = colors.onSurface,
+    )
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val speedText = speedLabel(state.speed)
+        val speedDescription = stringResource(R.string.player_speed, speedText)
+        TextButton(
+            onClick = actions.onCycleSpeed,
+            colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurfaceVariant),
+            modifier = Modifier.widthIn(min = 48.dp).semantics { contentDescription = speedDescription },
+        ) { Text(speedText, style = MaterialTheme.typography.labelLarge) }
+        FilledTonalIconButton(onClick = actions.onSkipBack, colors = round, modifier = Modifier.size(64.dp)) {
+            Icon(
+                painterResource(DowntifyIcons.SkipBack),
+                contentDescription = stringResource(R.string.player_skip_back),
+            )
+        }
+        FilledIconButton(
+            onClick = actions.onTogglePlay,
+            shape = RoundedCornerShape(28.dp),
+            modifier = Modifier.size(width = 104.dp, height = 80.dp),
+        ) {
+            Icon(
+                painterResource(if (state.isPlaying) DowntifyIcons.Pause else DowntifyIcons.Play),
+                contentDescription = stringResource(
+                    if (state.isPlaying) R.string.player_pause else R.string.player_play,
+                ),
+                modifier = Modifier.size(36.dp),
+            )
+        }
+        FilledTonalIconButton(onClick = actions.onSkipForward, colors = round, modifier = Modifier.size(64.dp)) {
+            Icon(
+                painterResource(DowntifyIcons.SkipForward),
+                contentDescription = stringResource(R.string.player_skip_forward),
+            )
+        }
+        Spacer(Modifier.size(48.dp))
+    }
+}
+
+/** `1×`, `1.25×`: no trailing zeros. */
+private fun speedLabel(speed: Float): String =
+    (if (speed % 1f == 0f) speed.toInt().toString() else speed.toString()) + "×"
 
 @Composable
 private fun SeekBar(state: PlayerState, colors: CoverColors, onSeek: (Long) -> Unit) {

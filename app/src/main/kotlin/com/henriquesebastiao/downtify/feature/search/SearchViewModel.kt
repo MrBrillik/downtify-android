@@ -3,8 +3,8 @@ package com.henriquesebastiao.downtify.feature.search
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.henriquesebastiao.downtify.core.data.ServerResult
 import com.henriquesebastiao.downtify.core.data.catalog.CatalogRepository
-import com.henriquesebastiao.downtify.core.data.catalog.CatalogResult
 import com.henriquesebastiao.downtify.core.data.catalog.ServerQueueRepository
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.library.LibrarySnapshot
@@ -213,12 +213,12 @@ class SearchViewModel @Inject constructor(
         catalog.download(link.tracks, playlistUrl = link.url.takeIf(CatalogLinks::isPlaylist))
     }
 
-    private fun request(title: String, count: Int, block: suspend () -> CatalogResult<Unit>) {
+    private fun request(title: String, count: Int, block: suspend () -> ServerResult<Unit>) {
         viewModelScope.launch {
             val message = when (val result = block()) {
-                is CatalogResult.Ok -> SearchMessage.Queued(title, count)
-                CatalogResult.Unreachable -> SearchMessage.Unreachable
-                is CatalogResult.Failed -> SearchMessage.RequestFailed
+                is ServerResult.Ok -> SearchMessage.Queued(title, count)
+                ServerResult.Unreachable -> SearchMessage.Unreachable
+                is ServerResult.Failed -> SearchMessage.RequestFailed
             }
             messageChannel.send(message)
         }
@@ -239,10 +239,10 @@ class SearchViewModel @Inject constructor(
         emit(result)
     }
 
-    private inline fun <T> CatalogResult<T>.map(transform: (T) -> ServerResults): ServerResults = when (this) {
-        is CatalogResult.Ok -> transform(value)
-        CatalogResult.Unreachable -> ServerResults.Unreachable
-        is CatalogResult.Failed -> ServerResults.Failed(status)
+    private inline fun <T> ServerResult<T>.map(transform: (T) -> ServerResults): ServerResults = when (this) {
+        is ServerResult.Ok -> transform(value)
+        ServerResult.Unreachable -> ServerResults.Unreachable
+        is ServerResult.Failed -> ServerResults.Failed(status)
     }
 
     override fun onCleared() {

@@ -38,12 +38,32 @@ class ContractParsingTest {
         assertEquals("""{"player":"p1","state":"stopped","track":{},"position":0}""", stopped)
         val playing = NetworkJson.encodeToString(
             PlaybackActivityRequest.serializer(),
-            PlaybackActivityRequest("p1", "playing", ActivityTrackDto("t7b2", "Roads", "Portishead", null, 305), 42),
+            PlaybackActivityRequest(
+                "p1",
+                "playing",
+                ActivityTrackDto(trackId = "t7b2", title = "Roads", artist = "Portishead", duration = 305),
+                42,
+            ),
         )
         assertEquals(
             """{"player":"p1","state":"playing","track":{"track_id":"t7b2","title":"Roads",""" +
                 """"artist":"Portishead","duration":305},"position":42}""",
             playing,
+        )
+        // A podcast episode has no track id: it's named by its file.
+        val episode = NetworkJson.encodeToString(
+            PlaybackActivityRequest.serializer(),
+            PlaybackActivityRequest(
+                "p1",
+                "playing",
+                ActivityTrackDto(file = "Podcasts/Radiolab/e.mp3", title = "Zoozve", artist = "Radiolab"),
+                7,
+            ),
+        )
+        assertEquals(
+            """{"player":"p1","state":"playing","track":{"file":"Podcasts/Radiolab/e.mp3",""" +
+                """"title":"Zoozve","artist":"Radiolab"},"position":7}""",
+            episode,
         )
     }
 

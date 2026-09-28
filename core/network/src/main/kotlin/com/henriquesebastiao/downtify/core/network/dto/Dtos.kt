@@ -116,6 +116,8 @@ data class PlaybackActivityRequest(
 @Serializable
 data class ActivityTrackDto(
     @SerialName("track_id") val trackId: String? = null,
+    /** A podcast episode's library path, for what has no track id. */
+    val file: String? = null,
     val title: String? = null,
     val artist: String? = null,
     val album: String? = null,

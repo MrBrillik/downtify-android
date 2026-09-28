@@ -24,6 +24,15 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object LikedRoute
 
+@Serializable data object DiscoverRoute
+
+@Serializable data object PodcastsRoute
+
+@Serializable data class ShowRoute(val showId: Long)
+
+/** Search with something typed in: a suggestion from Discover, or a link to open. */
+@Serializable data class SearchQueryRoute(val query: String)
+
 /** The four top-level destinations of the navigation bar / rail. */
 enum class TopLevelDestination(
     val route: Any,

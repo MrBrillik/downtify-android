@@ -6,7 +6,9 @@ Phase 2 (done): offline downloads — see below for what shipped and what's left
 
 Phase 3 (done): server search, download requests, previews and the server queue.
 
-Everything from phase 4 on is planned, not built. Each phase uses only what the server contract (`~/git/downtify/docs/mobile-client-contract.md`) already offers unless noted.
+Phase 4 (done): Discover and podcasts.
+
+Everything from phase 5 on is planned, not built. Each phase uses only what the server contract (`~/git/downtify/docs/mobile-client-contract.md`) already offers unless noted.
 
 ## Phase 2 — Offline downloads (Downloads board) — done
 
@@ -44,10 +46,24 @@ Left for later:
 - Results already in the library aren't hidden from "Not in your library yet" (matching YouTube Music titles to local tags reliably needs more than the ids the server gives).
 - Artist links show the artist's albums; their top songs (`/api/artists/top_songs/url`) aren't shown yet.
 
-## Phase 4 — Discover and podcasts
+## Phase 4 — Discover and podcasts — done
 
-- Discover sections from the server's discover endpoints.
-- Podcasts: subscriptions, episode lists, streaming and downloading episodes, **resume position** per episode, played state.
+There's no board for these in the design canvas, so they follow the existing screens' style (Material 3, the same list rows, cards and carousels). Both are reached from two cards under "Recently added" on Home — the four tabs stay as designed — and only when the server's `capabilities` say it has them.
+
+Shipped:
+
+- **Discover** (`POST /api/discover`, `/api/discover/collections`): "Artists for you" (the best 12, "Show all" up to 48), each with the library artists that suggested it; "Albums for you", "More from your artists" and "Playlists for you" as carousels. The phone sends the library's artists with how many songs are in the library and how many are liked (the server adds what was played); the server asks Deezer and Spotify and keeps the answers for a week, so it's quick after the first time. Every item opens **Search** with its Spotify link (or the artist's name when Spotify didn't find them by exact name), where it can be previewed and downloaded like a pasted link. "Not interested" hides an artist for good (`POST /api/discover/blocked`) with an Undo (`DELETE`). A partial answer (Deezer refused some artists) says the list is shorter than usual.
+- **Podcasts** (`GET /api/podcasts/shows`, `…/shows/{id}/episodes`): the shows the server follows, a show page with its episodes newest first, "Resume at 12:34" and a bar under a partly heard one, "Played", and a menu to mark an episode played or unplayed (`PUT …/playback`).
+- **Playing an episode** goes through the same player and media session as music, from the server's file (`/downloads/Podcasts/…`), from where the server says the user stopped. Now Playing, the mini player and the notification show it as a podcast: 10 s back, 30 s forward and playback speed (0.75×–2×) in place of previous/next/shuffle/repeat, no heart, lyrics or queue. An episode the server doesn't have yet is downloaded on demand (`POST …/download`, which answers when the file is there) and then plays.
+- **Progress** is saved to the server every 10 s of playback and at every pause, change of episode and end — the web player's rule — so the web page or another phone picks up where this one stopped. An episode within 3 s of its end counts as played. Episodes never count as listens (`/api/discover/listens`); the admins' Activity page shows them by file name.
+
+Left for later:
+
+- **Subscribing and unsubscribing is the web page's** (`POST/PATCH/DELETE /api/podcasts/…` are admin-only, and a paired phone is not an admin): the app lists what the server follows and says where to add more. See `docs/server-requirements.md`. The same goes for "Remove download" on an episode.
+- Episodes play from the server only: keeping them on the phone offline would reuse the offline downloads machinery (`OfflineRepository`) with the episode's file as the source.
+- Playback speed isn't remembered per show, and 10 s back (not the web's 15 s) is because Material Symbols has no 15 s glyph.
+- Discover: no "Hidden artists" list to review or add to (the web page has it), and `playlist_ids` (Spotify playlists already downloaded, to leave out of the suggestions) isn't sent.
+- Podcast search (`GET /api/podcasts/search`) and previewing a feed (`POST …/resolve`) aren't used: without subscribing they have nowhere to go.
 
 ## Phase 5 — Cast
 
