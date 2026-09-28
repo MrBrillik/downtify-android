@@ -7,7 +7,7 @@ Native Android client for the Downtify self-hosted music server. Kotlin, Jetpack
 - The contract lives in the server repo: `~/git/downtify/docs/mobile-client-contract.md`, with details in `docs/api-reference.md` ("Server and sign-in", "Mobile API (v1)", "WebSocket") and user-facing behaviour in `docs/features/mobile-apps.md`.
 - **Don't invent endpoints.** If the app needs something the server doesn't offer, write it in `docs/server-requirements.md` and work around it (or leave the feature out).
 - When the docs and the server code disagree, the code wins; note the mismatch in `docs/server-requirements.md`.
-- **Never modify the server repo from here.** Read it only. To test against it, run it with `DOWNLOAD_DIR`/`DATABASE_DIR` pointed at a scratch directory and a spare `--port`; port 8000 may be the user's own instance.
+- **Never modify the server repo from here.** Read it only. To test against it, run it with `DOWNLOAD_DIR`/`DATABASE_DIR` pointed at a scratch directory and a spare `--port`; port 8000 may be the user's own instance. From 3.2 a fresh server has accounts: sign in as `admin`/`downtify` (`POST /api/auth/login`, keep the cookie, send an `Origin` header) to create pairing codes with `POST /api/auth/pairing`.
 - Every request carries `Authorization: Bearer <token>` (`AuthInterceptor`), even when the server doesn't require sign-in: a 401 is how the app learns it was unpaired. A 401 "revoked", a WebSocket close 4401, or a refused WebSocket handshake confirmed by `GET /api/auth/status` all end the session (`SessionStore.onRevoked`).
 
 ## Modules and dependency rules
@@ -32,6 +32,7 @@ Native Android client for the Downtify self-hosted music server. Kotlin, Jetpack
 - **Text fields:** keep the text in synchronous snapshot state (`var x by mutableStateOf("")` in the ViewModel, or a plain `MutableStateFlow`), never in a flow that went through `combine`/`stateIn` — the async hop drops keystrokes. Don't rewrite the typed text (e.g. uppercase) in `onValueChange`; use a `VisualTransformation`.
 - Coroutines: `viewModelScope` in ViewModels, the `@ApplicationScope` scope for app-lifetime work. Rethrow `CancellationException` from every broad `catch`.
 - Android 17+ (target 37): talking to anything on the LAN needs the runtime `ACCESS_LOCAL_NETWORK` permission. The connect screen asks for it before starting NSD discovery.
+- Offline copies: `OfflineRepository` (in `:core:data/offline`) owns them. What should be on the phone is a pure `OfflinePlan` (`:core:model`) computed from the kept collections, the library, the files and the limit; the repository deletes what the plan drops at once and hands downloads to `OfflineSyncWorker`. Don't write offline files from anywhere else. The offline tables are user data: change them with Room migrations (`autoMigrations`), never by bumping the version and relying on the destructive fallback.
 
 ## Theming and UI
 

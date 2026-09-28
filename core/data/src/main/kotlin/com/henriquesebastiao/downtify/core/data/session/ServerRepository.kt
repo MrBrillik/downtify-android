@@ -19,6 +19,7 @@ import com.henriquesebastiao.downtify.core.network.session.Session
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import com.henriquesebastiao.downtify.core.network.session.SignOutReason
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 
 /** How the paired server is doing, for the Settings card and Home's status line. */
 enum class ConnectionState {
@@ -105,6 +107,22 @@ class ServerRepository @Inject constructor(
         connectionState.value = ConnectionState.Unknown
     }
 
+    /** The account this device belongs to can be renamed on the web: follow it (`GET /api/me`). */
+    private suspend fun refreshUser(baseUrl: String) {
+        val username = try {
+            apis.create(baseUrl).me().user?.username ?: return
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: IOException) {
+            return
+        } catch (_: HttpException) {
+            return // Older servers have no /api/me.
+        }
+        if (username != sessions.current?.username) {
+            withContext(Dispatchers.IO) { sessions.update { it.copy(username = username) } }
+        }
+    }
+
     /** Asks the paired server who it is now; updates the name, capabilities and [connection]. */
     suspend fun refresh(): ConnectionState {
         val current = sessions.current ?: return ConnectionState.Unknown
@@ -117,6 +135,7 @@ class ServerRepository @Inject constructor(
                     if (result.info.name != current.serverName) {
                         withContext(Dispatchers.IO) { sessions.update { it.copy(serverName = result.info.name) } }
                     }
+                    refreshUser(current.baseUrl)
                     ConnectionState.Connected
                 }
             }

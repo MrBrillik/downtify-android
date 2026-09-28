@@ -53,14 +53,17 @@ import com.henriquesebastiao.downtify.BuildConfig
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.data.session.ConnectionState
 import com.henriquesebastiao.downtify.core.data.settings.ThemeMode
+import com.henriquesebastiao.downtify.core.data.settings.UserSettings
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyLogo
 import com.henriquesebastiao.downtify.core.designsystem.component.StatusPill
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
+import com.henriquesebastiao.downtify.core.model.OfflinePlanner
 import com.henriquesebastiao.downtify.core.model.StreamFormat
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import com.henriquesebastiao.downtify.core.model.Transcoding
+import com.henriquesebastiao.downtify.core.model.formatBytes
 
 @Composable
 fun SettingsRoute(onBack: () -> Unit, modifier: Modifier = Modifier, viewModel: SettingsViewModel = hiltViewModel()) {
@@ -74,6 +77,8 @@ fun SettingsRoute(onBack: () -> Unit, modifier: Modifier = Modifier, viewModel: 
             onMobileQuality = viewModel::setMobileQuality,
             onTheme = viewModel::setTheme,
             onDynamicColor = viewModel::setDynamicColor,
+            onDownloadWifiOnly = viewModel::setDownloadWifiOnly,
+            onOfflineLimit = viewModel::setOfflineLimit,
             onUnpair = viewModel::unpair,
             onOpenWeb = {
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, state.baseUrl.toUri())) }
@@ -89,11 +94,13 @@ data class SettingsActions(
     val onMobileQuality: (StreamQuality) -> Unit = {},
     val onTheme: (ThemeMode) -> Unit = {},
     val onDynamicColor: (Boolean) -> Unit = {},
+    val onDownloadWifiOnly: (Boolean) -> Unit = {},
+    val onOfflineLimit: (Long) -> Unit = {},
     val onUnpair: () -> Unit = {},
     val onOpenWeb: () -> Unit = {},
 )
 
-private enum class SettingsDialog { WifiQuality, MobileQuality, Theme, Unpair }
+private enum class SettingsDialog { WifiQuality, MobileQuality, Theme, OfflineLimit, Unpair }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,6 +147,25 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                 },
                 enabled = state.transcoding.available,
                 onClick = { dialog = SettingsDialog.MobileQuality },
+            )
+
+            SectionTitle(stringResource(R.string.settings_downloads))
+            SwitchRow(
+                icon = DowntifyIcons.Downloads,
+                title = stringResource(R.string.settings_download_wifi_only),
+                summary = stringResource(R.string.settings_download_wifi_only_body),
+                checked = state.settings.downloadWifiOnly,
+                onCheckedChange = actions.onDownloadWifiOnly,
+            )
+            SettingRow(
+                icon = DowntifyIcons.Storage,
+                title = stringResource(R.string.settings_offline_limit),
+                summary = stringResource(
+                    R.string.settings_offline_limit_summary,
+                    limitLabel(state.settings.offlineLimitBytes),
+                    formatBytes(state.offlineUsedBytes),
+                ),
+                onClick = { dialog = SettingsDialog.OfflineLimit },
             )
 
             SectionTitle(stringResource(R.string.settings_appearance))
@@ -209,6 +235,15 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             onDismiss = { dialog = null },
         )
 
+        SettingsDialog.OfflineLimit -> ChoiceDialog(
+            title = stringResource(R.string.settings_offline_limit),
+            options = UserSettings.OFFLINE_LIMITS,
+            selected = state.settings.offlineLimitBytes,
+            label = { limitLabel(it) },
+            onSelect = actions.onOfflineLimit,
+            onDismiss = { dialog = null },
+        )
+
         SettingsDialog.Unpair -> AlertDialog(
             onDismissRequest = { dialog = null },
             icon = { Icon(painterResource(DowntifyIcons.Unpair), contentDescription = null) },
@@ -254,6 +289,13 @@ private fun ServerCard(state: SettingsUiState, onChangeServer: () -> Unit, onOpe
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (state.username.isNotBlank()) {
+                        Text(
+                            stringResource(R.string.settings_signed_in_as, state.username),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 ConnectionPill(state.connection)
             }
@@ -424,4 +466,11 @@ private fun SettingsPreview() {
             actions = SettingsActions(),
         )
     }
+}
+
+@Composable
+private fun limitLabel(bytes: Long): String = if (bytes == OfflinePlanner.UNLIMITED) {
+    stringResource(R.string.settings_offline_limit_none)
+} else {
+    formatBytes(bytes)
 }

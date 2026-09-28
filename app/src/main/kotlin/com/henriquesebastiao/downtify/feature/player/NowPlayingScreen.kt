@@ -126,7 +126,7 @@ fun NowPlayingScreen(
                 SeekBar(state, colors, actions.onSeek)
                 Controls(state, colors, actions)
                 Text(
-                    sourceLine(serverName, track.codec, state.quality),
+                    sourceLine(serverName, track.codec, state.quality, state.fromPhone),
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -366,7 +366,9 @@ private fun playingFromLabel(type: PlaybackContextType): Int = when (type) {
 }
 
 @Composable
-private fun sourceLine(server: String, codec: String, quality: StreamQuality?): String = when {
+private fun sourceLine(server: String, codec: String, quality: StreamQuality?, fromPhone: Boolean): String = when {
+    fromPhone -> stringResource(R.string.player_source_phone, codecLabel(codec.ifBlank { "audio" }))
+
     quality == null -> stringResource(R.string.player_source_unknown, server)
 
     quality.isOriginal -> stringResource(R.string.player_source_original, server, codecLabel(codec.ifBlank { "audio" }))

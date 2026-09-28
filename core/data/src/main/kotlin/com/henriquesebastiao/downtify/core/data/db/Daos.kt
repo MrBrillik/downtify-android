@@ -100,3 +100,30 @@ interface PendingListenDao {
     @Query("SELECT COUNT(*) FROM pending_listens")
     suspend fun count(): Int
 }
+
+@Dao
+interface OfflineDao {
+    @Query("SELECT * FROM offline_collections ORDER BY addedAt")
+    fun observeCollections(): Flow<List<OfflineCollectionEntity>>
+
+    @Upsert
+    suspend fun upsertCollection(entity: OfflineCollectionEntity)
+
+    @Query("DELETE FROM offline_collections WHERE `key` = :key")
+    suspend fun deleteCollection(key: String)
+
+    @Query("DELETE FROM offline_collections")
+    suspend fun deleteAllCollections()
+
+    @Query("SELECT * FROM offline_files")
+    fun observeFiles(): Flow<List<OfflineFileEntity>>
+
+    @Query("SELECT * FROM offline_files")
+    suspend fun files(): List<OfflineFileEntity>
+
+    @Upsert
+    suspend fun upsertFile(entity: OfflineFileEntity)
+
+    @Query("DELETE FROM offline_files WHERE trackId IN (:ids)")
+    suspend fun deleteFiles(ids: List<String>)
+}

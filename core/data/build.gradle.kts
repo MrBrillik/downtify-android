@@ -24,4 +24,6 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.kotlinx.coroutines.android)
+
+    testImplementation(libs.okhttp.mockwebserver)
 }

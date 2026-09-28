@@ -7,8 +7,10 @@ import com.henriquesebastiao.downtify.core.network.dto.LikeResponse
 import com.henriquesebastiao.downtify.core.network.dto.LikesDto
 import com.henriquesebastiao.downtify.core.network.dto.ListenRequest
 import com.henriquesebastiao.downtify.core.network.dto.LyricsDto
+import com.henriquesebastiao.downtify.core.network.dto.MeResponse
 import com.henriquesebastiao.downtify.core.network.dto.PairRequest
 import com.henriquesebastiao.downtify.core.network.dto.PairResponse
+import com.henriquesebastiao.downtify.core.network.dto.PlaybackActivityRequest
 import com.henriquesebastiao.downtify.core.network.dto.PlaylistDto
 import com.henriquesebastiao.downtify.core.network.dto.ServerInfoDto
 import retrofit2.Response
@@ -51,6 +53,12 @@ interface DowntifyApi {
 
     @GET("api/v1/tracks/{id}/lyrics")
     suspend fun lyrics(@Path("id") trackId: String): LyricsDto
+
+    @GET("api/me")
+    suspend fun me(): MeResponse
+
+    @POST("api/activity/playback")
+    suspend fun reportPlayback(@Body body: PlaybackActivityRequest): Response<Unit>
 
     @POST("api/discover/listens")
     suspend fun reportListen(@Body body: ListenRequest): Response<Unit>

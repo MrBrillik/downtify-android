@@ -21,6 +21,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.henriquesebastiao.downtify.core.data.activity.PlaybackActivityReporter
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
@@ -59,11 +60,14 @@ class PlaybackService : MediaSessionService() {
 
     @Inject lateinit var reporter: ListenReporter
 
+    @Inject lateinit var activityReporter: PlaybackActivityReporter
+
     @Inject lateinit var sessions: SessionStore
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var session: MediaSession? = null
     private var listens: ListenTracker? = null
+    private var activity: ActivityTracker? = null
     private val likeCommand = SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)
 
     override fun onCreate() {
@@ -94,6 +98,7 @@ class PlaybackService : MediaSessionService() {
         )
 
         listens = ListenTracker(player, reporter, scope).also { it.start() }
+        activity = ActivityTracker(player, activityReporter, scope).also { it.start() }
         keepLikeButtonCurrent(player)
         stopWhenSignedOut(player)
     }
@@ -119,6 +124,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         listens?.stop()
+        activity?.stop()
         scope.cancel()
         session?.run {
             player.release()

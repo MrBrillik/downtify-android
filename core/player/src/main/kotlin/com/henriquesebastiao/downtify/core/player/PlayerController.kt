@@ -189,6 +189,7 @@ class PlayerController @Inject constructor(
                 currentIndex = player.currentMediaItemIndex,
                 context = MediaItems.contextOf(player.playlistMetadata),
                 quality = item?.mediaId?.let(resolver::qualityOf),
+                fromPhone = item?.mediaId?.let(resolver::isLocal) == true,
                 error = if (old.track?.id != track?.id) null else old.error,
             )
         }

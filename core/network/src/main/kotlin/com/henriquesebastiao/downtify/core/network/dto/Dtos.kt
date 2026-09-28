@@ -84,7 +84,39 @@ data class PairRequest(
 )
 
 @Serializable
-data class PairResponse(val token: String, val device: DeviceDto, val server: PairedServerDto = PairedServerDto())
+data class PairResponse(
+    val token: String,
+    val device: DeviceDto,
+    val server: PairedServerDto = PairedServerDto(),
+    /** Who showed the code (servers with accounts, 3.2+); the device belongs to them. */
+    val user: UserDto? = null,
+)
+
+@Serializable
+data class UserDto(val username: String = "", val role: String = "")
+
+/** `GET /api/me`. */
+@Serializable
+data class MeResponse(val user: UserDto? = null)
+
+/** `POST /api/activity/playback`: what this player is doing, for the admins' Activity page. */
+@Serializable
+data class PlaybackActivityRequest(
+    val player: String,
+    val state: String,
+    val track: ActivityTrackDto = ActivityTrackDto(),
+    val position: Int = 0,
+)
+
+/** Empty (`{}`) with `stopped`. */
+@Serializable
+data class ActivityTrackDto(
+    @SerialName("track_id") val trackId: String? = null,
+    val title: String? = null,
+    val artist: String? = null,
+    val album: String? = null,
+    val duration: Int? = null,
+)
 
 @Serializable
 data class DeviceDto(val id: String = "", val name: String = "")

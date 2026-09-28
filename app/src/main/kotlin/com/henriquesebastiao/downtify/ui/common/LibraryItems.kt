@@ -4,8 +4,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -166,6 +168,7 @@ fun TrackRow(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
     isLiked: Boolean = false,
+    downloaded: Boolean = false,
     actions: TrackActions = TrackActions(),
     containerColor: Color = Color.Transparent,
 ) {
@@ -180,7 +183,19 @@ fun TrackRow(
                 fontWeight = if (isCurrent) FontWeight.SemiBold else null,
             )
         },
-        supportingContent = { Text(trackSubtitle(track), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (downloaded) {
+                    Icon(
+                        painterResource(DowntifyIcons.CheckCircle),
+                        contentDescription = stringResource(R.string.downloads_downloaded),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 6.dp).size(14.dp),
+                    )
+                }
+                Text(trackSubtitle(track), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        },
         leadingContent = {
             when {
                 showCover -> Box(contentAlignment = Alignment.Center) {

@@ -24,6 +24,8 @@ data class PlayerState(
     val context: PlaybackContext? = null,
     /** The quality the current track streams in, once it started. */
     val quality: StreamQuality? = null,
+    /** The current track plays from its offline copy on the phone. */
+    val fromPhone: Boolean = false,
     /** The last playback error, for a message; cleared by the next track. */
     val error: PlaybackError? = null,
 ) {

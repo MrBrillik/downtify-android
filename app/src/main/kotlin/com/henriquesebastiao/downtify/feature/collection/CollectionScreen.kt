@@ -11,23 +11,33 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -74,6 +84,7 @@ fun CollectionRoute(
         onPlay = viewModel::play,
         onPlayOrPause = viewModel::playOrPause,
         onShuffle = viewModel::shuffle,
+        onToggleOffline = viewModel::toggleOffline,
         trackActions = TrackActions(
             onToggleLike = viewModel::toggleLike,
             onGoToAlbum = if (state.kind == CollectionKind.Album) null else { t -> onAlbum(t.albumId) },
@@ -93,6 +104,7 @@ fun CollectionScreen(
     onPlayOrPause: () -> Unit,
     onShuffle: () -> Unit,
     modifier: Modifier = Modifier,
+    onToggleOffline: () -> Unit = {},
     trackActions: TrackActions = TrackActions(),
 ) {
     val covers = LocalCoverUrls.current
@@ -140,7 +152,7 @@ fun CollectionScreen(
                 item {
                     Header(state, title, coverUrl, colors.surface, colors.onSurfaceVariant, onArtist)
                 }
-                item { Actions(state, title, onPlayOrPause, onShuffle) }
+                item { Actions(state, title, onPlayOrPause, onShuffle, onToggleOffline) }
                 itemsIndexed(state.tracks, key = { i, t -> "$i:${t.id}" }) { index, track ->
                     val current = track.id == state.currentTrackId && state.isCurrentContext
                     TrackRow(
@@ -157,6 +169,7 @@ fun CollectionScreen(
                         isCurrent = current,
                         isPlaying = state.isPlaying,
                         isLiked = track.id in state.likedIds,
+                        downloaded = track.id in state.offline.downloadedIds,
                         actions = trackActions,
                         containerColor = if (current) MaterialTheme.colorScheme.surfaceContainer else Color.Transparent,
                     )
@@ -229,12 +242,24 @@ private fun Header(
 }
 
 @Composable
-private fun Actions(state: CollectionUiState, title: String, onPlayOrPause: () -> Unit, onShuffle: () -> Unit) {
+private fun Actions(
+    state: CollectionUiState,
+    title: String,
+    onPlayOrPause: () -> Unit,
+    onShuffle: () -> Unit,
+    onToggleOffline: () -> Unit,
+) {
     val playing = state.isCurrentContext && state.isPlaying
+    var confirmRemove by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.lg, bottom = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        OfflineChip(
+            offline = state.offline,
+            enabled = state.tracks.isNotEmpty() || state.offline.kept,
+            onClick = { if (state.offline.kept) confirmRemove = true else onToggleOffline() },
+        )
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onShuffle, enabled = state.tracks.isNotEmpty()) {
             Icon(
@@ -259,6 +284,51 @@ private fun Actions(state: CollectionUiState, title: String, onPlayOrPause: () -
             )
         }
     }
+    if (confirmRemove) {
+        AlertDialog(
+            onDismissRequest = { confirmRemove = false },
+            title = { Text(stringResource(R.string.collection_remove_title)) },
+            text = { Text(stringResource(R.string.collection_remove_message, title)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRemove = false
+                    onToggleOffline()
+                }) { Text(stringResource(R.string.collection_remove_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+}
+
+/** "Download", then "Downloading 3 of 10", then "On this phone" — the design's offline toggle. */
+@Composable
+private fun OfflineChip(offline: CollectionOffline, enabled: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = offline.kept,
+        onClick = onClick,
+        enabled = enabled,
+        label = {
+            Text(
+                when {
+                    !offline.kept -> stringResource(R.string.collection_download)
+                    offline.isComplete -> stringResource(R.string.collection_on_phone)
+                    else -> stringResource(R.string.collection_downloading, offline.downloaded, offline.total)
+                },
+            )
+        },
+        leadingIcon = {
+            Icon(
+                painterResource(if (offline.isComplete) DowntifyIcons.CheckCircle else DowntifyIcons.Downloads),
+                contentDescription = null,
+                tint = if (offline.kept) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                modifier = Modifier.size(FilterChipDefaults.IconSize),
+            )
+        },
+        shape = CircleShape,
+        modifier = Modifier.heightIn(min = 40.dp),
+    )
 }
 
 @PreviewLightDark

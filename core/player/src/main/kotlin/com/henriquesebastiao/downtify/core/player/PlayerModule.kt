@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
@@ -58,14 +59,19 @@ object PlayerModule {
     @Singleton
     @AudioDataSource
     fun audioDataSource(
+        @ApplicationContext context: Context,
         cache: SimpleCache,
         http: OkHttpDataSource.Factory,
         resolver: StreamResolver,
     ): DataSource.Factory = ResolvingDataSource.Factory(
-        CacheDataSource.Factory()
-            .setCache(cache)
-            .setUpstreamDataSourceFactory(http)
-            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR),
+        // file:// (offline copies) is read straight from disk; http(s) goes through the streaming cache.
+        DefaultDataSource.Factory(
+            context,
+            CacheDataSource.Factory()
+                .setCache(cache)
+                .setUpstreamDataSourceFactory(http)
+                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR),
+        ),
         resolver,
     )
 

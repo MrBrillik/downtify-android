@@ -1,7 +1,10 @@
 package com.henriquesebastiao.downtify.core.network
 
 import com.henriquesebastiao.downtify.core.model.ServerInfo
+import com.henriquesebastiao.downtify.core.network.dto.ActivityTrackDto
 import com.henriquesebastiao.downtify.core.network.dto.LibraryPageDto
+import com.henriquesebastiao.downtify.core.network.dto.PairResponse
+import com.henriquesebastiao.downtify.core.network.dto.PlaybackActivityRequest
 import com.henriquesebastiao.downtify.core.network.dto.ServerInfoDto
 import com.henriquesebastiao.downtify.core.network.live.LiveEvent
 import com.henriquesebastiao.downtify.core.network.live.LiveUpdatesClient
@@ -12,6 +15,37 @@ import org.junit.Test
 
 /** The contract's own examples parse into what the app expects. */
 class ContractParsingTest {
+
+    @Test
+    fun `pair response names the user the device belongs to`() {
+        val response = NetworkJson.decodeFromString<PairResponse>(
+            """
+            {"token":"dtfy_x","device":{"id":"8uz4","name":"Pixel 8"},
+             "server":{"server_id":"cf12","name":"nas"},"user":{"username":"maria","role":"user"}}
+            """.trimIndent(),
+        )
+        assertEquals("maria", response.user?.username)
+        // Servers before 3.2 send no user.
+        assertNull(NetworkJson.decodeFromString<PairResponse>("""{"token":"t","device":{}}""").user)
+    }
+
+    @Test
+    fun `a stopped activity report sends an empty track`() {
+        val stopped = NetworkJson.encodeToString(
+            PlaybackActivityRequest.serializer(),
+            PlaybackActivityRequest("p1", "stopped"),
+        )
+        assertEquals("""{"player":"p1","state":"stopped","track":{},"position":0}""", stopped)
+        val playing = NetworkJson.encodeToString(
+            PlaybackActivityRequest.serializer(),
+            PlaybackActivityRequest("p1", "playing", ActivityTrackDto("t7b2", "Roads", "Portishead", null, 305), 42),
+        )
+        assertEquals(
+            """{"player":"p1","state":"playing","track":{"track_id":"t7b2","title":"Roads",""" +
+                """"artist":"Portishead","duration":305},"position":42}""",
+            playing,
+        )
+    }
 
     @Test
     fun `server info`() {

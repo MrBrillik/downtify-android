@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
+import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.Playlist
@@ -36,8 +37,20 @@ data class CollectionUiState(
     /** This album/playlist is what's loaded in the player. */
     val isCurrentContext: Boolean = false,
     val likedIds: Set<String> = emptySet(),
+    val offline: CollectionOffline = CollectionOffline(),
 ) {
     val durationSeconds: Double get() = tracks.sumOf { it.duration }
+}
+
+/** Whether this collection is kept on the phone, and how far its download got. */
+data class CollectionOffline(
+    val kept: Boolean = false,
+    val downloaded: Int = 0,
+    val total: Int = 0,
+    /** Tracks of this collection with a copy on the phone (kept here or by another collection). */
+    val downloadedIds: Set<String> = emptySet(),
+) {
+    val isComplete: Boolean get() = kept && total > 0 && downloaded == total
 }
 
 /** An album, a playlist or Liked songs: a header and its tracks. */
@@ -46,6 +59,7 @@ class CollectionViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val library: LibraryRepository,
     private val player: PlayerController,
+    private val offline: OfflineRepository,
 ) : ViewModel() {
     private val albumId: String? = savedState["albumId"]
     private val playlistName: String? = savedState["name"]
@@ -55,12 +69,21 @@ class CollectionViewModel @Inject constructor(
         else -> CollectionKind.Liked
     }
 
+    private val contextType = when (kind) {
+        CollectionKind.Album -> PlaybackContextType.Album
+        CollectionKind.Playlist -> PlaybackContextType.Playlist
+        CollectionKind.Liked -> PlaybackContextType.Liked
+    }
+
+    private val refId: String = albumId ?: playlistName.orEmpty()
+
     val uiState: StateFlow<CollectionUiState> = combine(
         library.library,
         library.playlists,
         library.likedIds,
         player.nowPlaying,
-    ) { snapshot, playlists, liked, playing ->
+        offline.state,
+    ) { snapshot, playlists, liked, playing, offlineState ->
         if (snapshot == null) return@combine CollectionUiState(kind = kind)
         val base = CollectionUiState(
             loading = false,
@@ -98,7 +121,23 @@ class CollectionViewModel @Inject constructor(
                 base.copy(tracks = tracks, coverTrackId = tracks.firstOrNull { it.hasCover }?.id)
             }
         } ?: base.copy(notFound = true)
-        state.copy(isCurrentContext = playing.context == context(state.title))
+        val kept = offlineState?.kept(contextType, refId)
+        state.copy(
+            isCurrentContext = playing.context == context(state.title),
+            offline = CollectionOffline(
+                kept = kept != null,
+                downloaded = kept?.progress?.downloaded ?: 0,
+                total = kept?.progress?.total ?: 0,
+                downloadedIds =
+                    offlineState?.files?.keys?.let { ids ->
+                        state.tracks.map { it.id }.filterTo(mutableSetOf()) {
+                            it in
+                                ids
+                        }
+                    }
+                        ?: emptySet(),
+            ),
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), CollectionUiState(kind = kind))
 
     fun play(index: Int, shuffle: Boolean = false) {
@@ -115,6 +154,12 @@ class CollectionViewModel @Inject constructor(
 
     fun toggleLike(track: Track) {
         viewModelScope.launch { library.setLiked(track.id, track.id !in uiState.value.likedIds) }
+    }
+
+    /** Keeps this collection on the phone, or removes its copies. */
+    fun toggleOffline() {
+        val keep = !uiState.value.offline.kept
+        viewModelScope.launch { offline.setKept(contextType, refId, keep) }
     }
 
     private fun context(title: String) = when (kind) {

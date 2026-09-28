@@ -106,4 +106,8 @@ object DowntifyIcons {
     @DrawableRes val Graphic = R.drawable.ic_graphic_eq
 
     @DrawableRes val Logo = R.drawable.ic_downtify_logo
+
+    @DrawableRes val Delete = R.drawable.ic_delete
+
+    @DrawableRes val Storage = R.drawable.ic_storage
 }

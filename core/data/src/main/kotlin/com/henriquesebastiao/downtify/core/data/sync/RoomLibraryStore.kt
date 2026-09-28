@@ -36,6 +36,8 @@ class RoomLibraryStore @Inject constructor(private val db: DowntifyDatabase) : L
         db.playlists().deleteAll()
         db.likes().deleteAll()
         db.recents().deleteAll()
+        // Another server's ids: its offline copies go too (their files are swept once unlisted).
+        db.offline().deleteAllCollections()
     }
 
     private companion object {

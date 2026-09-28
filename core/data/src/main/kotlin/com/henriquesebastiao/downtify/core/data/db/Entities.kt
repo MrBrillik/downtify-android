@@ -3,6 +3,8 @@ package com.henriquesebastiao.downtify.core.data.db
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.henriquesebastiao.downtify.core.model.OfflineCollection
+import com.henriquesebastiao.downtify.core.model.OfflineFile
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.RecentContext
@@ -93,3 +95,28 @@ data class PendingListenEntity(
     val playedAt: String,
     val createdAt: Long,
 )
+
+/** A collection kept on the phone (see [OfflineCollection]). */
+@Entity(tableName = "offline_collections")
+data class OfflineCollectionEntity(
+    @PrimaryKey val key: String,
+    val type: String,
+    val refId: String,
+    val addedAt: Long,
+) {
+    fun toModel(): OfflineCollection? {
+        val type = PlaybackContextType.entries.firstOrNull { it.name == type } ?: return null
+        return OfflineCollection(type, refId, addedAt)
+    }
+}
+
+/** A complete offline copy in the app's `offline/` folder. Partial downloads aren't listed. */
+@Entity(tableName = "offline_files")
+data class OfflineFileEntity(
+    @PrimaryKey val trackId: String,
+    val fileName: String,
+    val bytes: Long,
+    val downloadedAt: Long,
+) {
+    fun toModel() = OfflineFile(trackId, fileName, bytes)
+}

@@ -8,6 +8,8 @@ data class Session(
     val serverName: String,
     val deviceId: String,
     val token: String,
+    /** The account the device belongs to; blank on servers without accounts. */
+    val username: String = "",
 ) {
     override fun toString(): String = "Session(baseUrl=$baseUrl, serverId=$serverId, deviceId=$deviceId, token=***)"
 }

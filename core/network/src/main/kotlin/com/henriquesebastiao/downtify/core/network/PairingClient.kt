@@ -30,6 +30,7 @@ class PairingClient @Inject constructor(private val apis: ApiFactory) {
                 serverName = response.server.name,
                 deviceId = response.device.id,
                 token = response.token,
+                username = response.user?.username.orEmpty(),
             ),
         )
     } catch (e: CancellationException) {

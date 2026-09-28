@@ -7,6 +7,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.ResolvingDataSource
 import com.henriquesebastiao.downtify.core.data.NetworkMonitor
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
+import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.data.session.ServerRepository
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
 import com.henriquesebastiao.downtify.core.data.settings.UserSettings
@@ -23,9 +24,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 
 /**
- * Turns `downtify://track/{id}` into the server's stream URL at the moment the
- * player opens it: the original on Wi-Fi, the mobile-data quality on a metered
- * network (when the server can transcode) — as set in Settings.
+ * Turns `downtify://track/{id}` into what the player reads at the moment it
+ * opens it: the offline copy when the phone has one, else the server's stream
+ * URL — the original on Wi-Fi, the mobile-data quality on a metered network
+ * (when the server can transcode) — as set in Settings.
  *
  * The quality is chosen when a track starts from the beginning and kept for
  * that track's later range requests (seeks), so a network change mid-song
@@ -37,15 +39,23 @@ class StreamResolver @Inject constructor(
     private val sessions: SessionStore,
     private val server: ServerRepository,
     private val network: NetworkMonitor,
+    private val offline: OfflineRepository,
     settings: SettingsRepository,
     @ApplicationScope scope: CoroutineScope,
 ) : ResolvingDataSource.Resolver {
 
     private val settings = settings.settings.stateIn(scope, SharingStarted.Eagerly, UserSettings())
     private val chosen = LruCache<String, StreamQuality>(CHOSEN_CACHE_SIZE)
+    private val local = LruCache<String, Boolean>(CHOSEN_CACHE_SIZE)
 
     override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
         val trackId = MediaItems.trackIdOf(dataSpec.uri) ?: return dataSpec
+        offline.localFile(trackId)?.let { file ->
+            chosen.put(trackId, StreamQuality.Original)
+            local.put(trackId, true)
+            return dataSpec.withUri(Uri.fromFile(file))
+        }
+        local.remove(trackId)
         val session = sessions.current ?: throw IOException("Not paired with a server")
         val quality = if (dataSpec.position == 0L || chosen[trackId] == null) {
             qualityNow().also { chosen.put(trackId, it) }
@@ -64,6 +74,9 @@ class StreamResolver @Inject constructor(
 
     /** The quality [trackId] is streaming in, when it has started. */
     fun qualityOf(trackId: String): StreamQuality? = chosen[trackId]
+
+    /** Whether [trackId] is playing from its offline copy. */
+    fun isLocal(trackId: String): Boolean = local[trackId] == true
 
     private companion object {
         const val CHOSEN_CACHE_SIZE = 64

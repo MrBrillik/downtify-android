@@ -57,6 +57,7 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
             putString(KEY_SERVER_ID, session.serverId)
             putString(KEY_SERVER_NAME, session.serverName)
             putString(KEY_DEVICE_ID, session.deviceId)
+            putString(KEY_USERNAME, session.username)
             putString(KEY_TOKEN, cipher.encrypt(session.token))
         }
         loaded = true
@@ -106,6 +107,7 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
             serverName = prefs.getString(KEY_SERVER_NAME, "").orEmpty(),
             deviceId = prefs.getString(KEY_DEVICE_ID, "").orEmpty(),
             token = token,
+            username = prefs.getString(KEY_USERNAME, "").orEmpty(),
         )
     }
 
@@ -117,5 +119,6 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
         const val KEY_SERVER_NAME = "server_name"
         const val KEY_DEVICE_ID = "device_id"
         const val KEY_TOKEN = "token"
+        const val KEY_USERNAME = "username"
     }
 }

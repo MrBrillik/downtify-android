@@ -1,5 +1,6 @@
 package com.henriquesebastiao.downtify.core.data.db
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
@@ -12,9 +13,13 @@ import androidx.room.TypeConverters
         LikeEntity::class,
         RecentContextEntity::class,
         PendingListenEntity::class,
+        OfflineCollectionEntity::class,
+        OfflineFileEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    // Offline collections are the user's choices, not a copy of the server's: migrate, never drop.
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 @TypeConverters(Converters::class)
 abstract class DowntifyDatabase : RoomDatabase() {
@@ -23,4 +28,5 @@ abstract class DowntifyDatabase : RoomDatabase() {
     abstract fun likes(): LikeDao
     abstract fun recents(): RecentContextDao
     abstract fun pendingListens(): PendingListenDao
+    abstract fun offline(): OfflineDao
 }

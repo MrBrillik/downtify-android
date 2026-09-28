@@ -1,15 +1,29 @@
 # Roadmap
 
-Phase 1 (done): connect & pair, library sync, Home / Library / Album / Artist / Search (local), Settings, streaming with Media3, lyrics, likes, play reports. Everything below is planned, not built. Each phase uses only what the server contract (`~/git/downtify/docs/mobile-client-contract.md`) already offers unless noted.
+Phase 1 (done): connect & pair, library sync, Home / Library / Album / Artist / Search (local), Settings, streaming with Media3, lyrics, likes, play reports.
 
-## Phase 2 — Offline downloads (Downloads board)
+Phase 2 (done): offline downloads — see below for what shipped and what's left. Also done alongside it: the server 3.2 contract additions ("Signed in as …" from the pair response and `GET /api/me`, and now-playing reports to `POST /api/activity/playback`).
 
-- Keep albums, playlists and Liked songs offline; per-item toggle on Album/Playlist headers and a "Keep offline" switch on Liked songs.
-- A WorkManager job per collection, downloading `GET /api/v1/tracks/{id}/stream` (original, or a chosen quality) with **Range** requests so interrupted files resume. Constraints: Wi-Fi only (default on), not low on storage.
-- Storage: an app-private directory, a user-set limit, least-recently-played eviction; the Room offline index (track id → file, size, quality, etag/mtime) is the source of truth.
-- Playback prefers the local file (a `DataSource` that checks the offline index before the network); the library works fully offline.
-- Library sync removes offline files for tracks deleted on the server.
-- Split `:feature:downloads` (with its own data layer) out of `:app` at this point.
+Everything from phase 3 on is planned, not built. Each phase uses only what the server contract (`~/git/downtify/docs/mobile-client-contract.md`) already offers unless noted.
+
+## Phase 2 — Offline downloads (Downloads board) — done
+
+Shipped:
+
+- Keep albums, playlists and Liked songs offline: the "Download / On this phone" chip on Album, Playlist and Liked songs headers, and "Keep Liked songs offline" on Downloads. Downloaded tracks get a check in every track list.
+- One WorkManager job (`OfflineSyncWorker`) downloads the originals (`GET /api/v1/tracks/{id}/stream`) one by one into `files/offline/`, resuming an interrupted file with a **Range** request. Constraints: Wi-Fi only (default on, Settings › Downloads) and storage not low.
+- Kept collections follow the library: a song added to a kept album on the server downloads, a removed one is deleted; liking a song with Liked songs kept downloads it.
+- A storage limit (default 8 GB, Settings › Downloads). Collections fill it oldest first; what doesn't fit is shown as "doesn't fit the storage limit", and lowering the limit deletes the newest collections' songs first. Nothing is evicted silently.
+- Playback reads the offline copy first ("Playing from this phone" in Now Playing); the library works fully offline.
+- Changing to another server deletes the previous server's offline copies.
+
+Left for later:
+
+- Offline copies are always the original file. A "download quality" setting (a transcoded copy for big FLAC libraries) would use the same URL with `format`/`bitrate`.
+- Covers of offline albums rely on Coil's disk cache (256 MB); they aren't pinned with the audio, so a long-unseen album can show a placeholder while offline.
+- Downloads run as ordinary WorkManager work, not a foreground service: on a big collection Android may pause them when the app is in the background for long, and they resume on the next run. A progress notification (foreground `dataSync`, or a user-initiated data transfer job) would make them steadier.
+- The "On the server" half of the Downloads board (the server's download queue) belongs to phase 3.
+- `:feature:downloads` wasn't split into its own module: the data layer lives in `:core:data` (`offline/`), which the player needs too, so the screen alone didn't earn a module.
 
 ## Phase 3 — Server search and requests (Search board)
 

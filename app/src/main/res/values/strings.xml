@@ -128,8 +128,49 @@
 
     <!-- Downloads -->
     <string name="downloads_title">Downloads</string>
-    <string name="downloads_coming_title">Offline listening is on its way</string>
-    <string name="downloads_coming_body">Keeping albums, playlists and liked songs on this phone arrives in a coming version. For now, everything streams from your server, and recently played songs stay in a cache.</string>
+    <string name="downloads_used">%1$s used</string>
+    <string name="downloads_of_limit">of %1$s limit</string>
+    <string name="downloads_no_limit">no limit</string>
+    <plurals name="downloads_storage_body">
+        <item quantity="one">%1$d song plays without the server. %2$s free on this phone.</item>
+        <item quantity="other">%1$d songs play without the server. %2$s free on this phone.</item>
+    </plurals>
+    <string name="downloads_storage_a11y">Offline storage used</string>
+    <string name="downloads_keep_liked">Keep Liked songs offline</string>
+    <string name="downloads_keep_liked_body_wifi">A song you like downloads to this phone on Wi-Fi.</string>
+    <string name="downloads_keep_liked_body">A song you like downloads to this phone.</string>
+    <string name="downloads_on_phone">On this phone</string>
+    <string name="downloads_empty_title">Nothing on this phone yet</string>
+    <string name="downloads_empty_body">Tap Download on an album or a playlist, or keep your Liked songs offline, to listen without the server.</string>
+    <plurals name="downloads_status_done">
+        <item quantity="one">%1$d song · %2$s</item>
+        <item quantity="other">%1$d songs · %2$s</item>
+    </plurals>
+    <string name="downloads_status_done_synced">%1$s · kept in sync</string>
+    <string name="downloads_status_progress">Downloading %1$d of %2$d</string>
+    <string name="downloads_status_waiting_wifi">%1$s · waiting for Wi-Fi</string>
+    <string name="downloads_status_waiting_network">%1$s · waiting for a connection</string>
+    <plurals name="downloads_status_over_limit">
+        <item quantity="one">%1$d of %2$d · 1 song doesn\'t fit the storage limit</item>
+        <item quantity="other">%1$d of %2$d · %3$d songs don\'t fit the storage limit</item>
+    </plurals>
+    <string name="downloads_status_missing">Not in the library anymore</string>
+    <string name="downloads_options">Options for %1$s</string>
+    <string name="downloads_remove">Remove from this phone</string>
+    <string name="downloads_downloaded">Downloaded</string>
+    <string name="collection_download">Download</string>
+    <string name="collection_downloading">Downloading %1$d of %2$d</string>
+    <string name="collection_on_phone">On this phone</string>
+    <string name="collection_remove_title">Remove from this phone?</string>
+    <string name="collection_remove_message">%1$s stays in your library and streams from the server.</string>
+    <string name="collection_remove_confirm">Remove</string>
+    <string name="settings_downloads">Downloads</string>
+    <string name="settings_signed_in_as">Signed in as %1$s</string>
+    <string name="settings_download_wifi_only">Download on Wi-Fi only</string>
+    <string name="settings_download_wifi_only_body">Offline copies wait for Wi-Fi</string>
+    <string name="settings_offline_limit">Offline storage limit</string>
+    <string name="settings_offline_limit_summary">%1$s · %2$s used</string>
+    <string name="settings_offline_limit_none">No limit</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -187,6 +228,7 @@
     <string name="player_source_original">Streaming from %1$s · %2$s · Original quality</string>
     <string name="player_source_transcoded">Streaming from %1$s · %2$s %3$d kbps</string>
     <string name="player_source_unknown">Streaming from %1$s</string>
+    <string name="player_source_phone">Playing from this phone · %1$s</string>
     <string name="player_lyrics_none">No lyrics for this song.</string>
     <string name="player_lyrics_loading">Loading lyrics…</string>
     <string name="player_error_network">Can\'t reach the server to play this song.</string>

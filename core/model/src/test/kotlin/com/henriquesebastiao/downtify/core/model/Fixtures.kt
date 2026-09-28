@@ -14,6 +14,7 @@ fun track(
     hasCover: Boolean = true,
     codec: String = "flac",
     bitrate: Int = 900_000,
+    size: Long = 1_000,
 ) = Track(
     id = id,
     file = "$albumArtist - $title.flac",
@@ -31,7 +32,7 @@ fun track(
     bitrate = bitrate,
     sampleRate = 44_100,
     channels = 2,
-    size = 1_000,
+    size = size,
     added = added,
     hasCover = hasCover,
     playlists = emptyList(),

@@ -11,6 +11,7 @@ import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
 import com.henriquesebastiao.downtify.core.network.di.DefaultClient
 import dagger.Lazy
@@ -28,6 +29,8 @@ class DowntifyApplication :
 
     @Inject lateinit var syncCoordinator: SyncCoordinator
 
+    @Inject lateinit var offline: OfflineRepository
+
     @Inject
     @DefaultClient
     lateinit var httpClient: Lazy<OkHttpClient>
@@ -38,6 +41,7 @@ class DowntifyApplication :
     override fun onCreate() {
         super.onCreate()
         syncCoordinator.start()
+        offline.start()
     }
 
     /** Covers load through the app's OkHttp client, so they carry the device token. */

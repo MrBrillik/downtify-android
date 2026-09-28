@@ -56,7 +56,7 @@ import com.henriquesebastiao.downtify.core.model.RecentContext
 import com.henriquesebastiao.downtify.feature.artist.ArtistRoute
 import com.henriquesebastiao.downtify.feature.collection.CollectionRoute
 import com.henriquesebastiao.downtify.feature.connect.ConnectRoute
-import com.henriquesebastiao.downtify.feature.downloads.DownloadsScreen
+import com.henriquesebastiao.downtify.feature.downloads.DownloadsRoute
 import com.henriquesebastiao.downtify.feature.home.HomeRoute
 import com.henriquesebastiao.downtify.feature.library.LibraryNavigation
 import com.henriquesebastiao.downtify.feature.library.LibraryRoute
@@ -73,7 +73,7 @@ import com.henriquesebastiao.downtify.ui.common.CoverUrls
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.navigation.AlbumRoute
 import com.henriquesebastiao.downtify.ui.navigation.ArtistRoute as ArtistDestination
-import com.henriquesebastiao.downtify.ui.navigation.DownloadsRoute
+import com.henriquesebastiao.downtify.ui.navigation.DownloadsRoute as DownloadsDestination
 import com.henriquesebastiao.downtify.ui.navigation.HomeRoute as HomeDestination
 import com.henriquesebastiao.downtify.ui.navigation.LibraryRoute as LibraryDestination
 import com.henriquesebastiao.downtify.ui.navigation.LikedRoute
@@ -200,7 +200,17 @@ private fun AppNavHost(navController: NavHostController) {
                 ),
             )
         }
-        composable<DownloadsRoute> { DownloadsScreen() }
+        composable<DownloadsDestination> {
+            DownloadsRoute(
+                onOpen = { item ->
+                    when (item.type) {
+                        PlaybackContextType.Album -> toAlbum(item.refId)
+                        PlaybackContextType.Playlist -> toPlaylist(item.refId)
+                        else -> navController.navigate(LikedRoute)
+                    }
+                },
+            )
+        }
         composable<SettingsDestination> { SettingsRoute(onBack = navController::popBackStack) }
         composable<AlbumRoute> {
             CollectionRoute(onBack = navController::popBackStack, onArtist = toArtist, onAlbum = toAlbum)

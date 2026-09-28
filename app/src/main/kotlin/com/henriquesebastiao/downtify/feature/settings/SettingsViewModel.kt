@@ -2,6 +2,7 @@ package com.henriquesebastiao.downtify.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.data.session.ConnectionState
 import com.henriquesebastiao.downtify.core.data.session.ServerRepository
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
@@ -20,6 +21,8 @@ import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val serverName: String = "",
+    /** The account this phone belongs to; blank on servers without accounts. */
+    val username: String = "",
     val address: String = "",
     val baseUrl: String = "",
     val version: String = "",
@@ -29,12 +32,15 @@ data class SettingsUiState(
     val settings: UserSettings = UserSettings(),
     /** Qualities to offer for mobile data (and Wi-Fi): Original first, then what the server can make. */
     val qualityOptions: List<StreamQuality> = listOf(StreamQuality.Original),
+    /** Bytes the offline copies take now. */
+    val offlineUsedBytes: Long = 0,
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val server: ServerRepository,
     private val settings: SettingsRepository,
+    offline: OfflineRepository,
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -42,10 +48,12 @@ class SettingsViewModel @Inject constructor(
         server.serverInfo,
         server.connection,
         settings.settings,
-    ) { session, info, connection, prefs ->
+        offline.state,
+    ) { session, info, connection, prefs, offlineState ->
         val transcoding = info?.capabilities?.transcoding ?: Transcoding()
         SettingsUiState(
             serverName = session?.serverName.orEmpty().ifBlank { info?.name.orEmpty() },
+            username = session?.username.orEmpty(),
             address = session?.baseUrl.orEmpty().substringAfter("://"),
             baseUrl = session?.baseUrl.orEmpty(),
             version = info?.version.orEmpty(),
@@ -54,6 +62,7 @@ class SettingsViewModel @Inject constructor(
             transcoding = transcoding,
             settings = prefs,
             qualityOptions = qualityOptions(transcoding),
+            offlineUsedBytes = offlineState?.usedBytes ?: 0,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SettingsUiState())
 
@@ -65,6 +74,8 @@ class SettingsViewModel @Inject constructor(
     fun setMobileQuality(value: StreamQuality) = launch { settings.setMobileQuality(value) }
     fun setTheme(value: ThemeMode) = launch { settings.setTheme(value) }
     fun setDynamicColor(value: Boolean) = launch { settings.setDynamicColor(value) }
+    fun setDownloadWifiOnly(value: Boolean) = launch { settings.setDownloadWifiOnly(value) }
+    fun setOfflineLimit(bytes: Long) = launch { settings.setOfflineLimit(bytes) }
     fun unpair() = launch { server.unpair() }
 
     private fun launch(block: suspend () -> Unit) {

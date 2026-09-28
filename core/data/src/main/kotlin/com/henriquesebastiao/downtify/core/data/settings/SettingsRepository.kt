@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import java.util.UUID
@@ -24,6 +25,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
             mobileQuality = StreamQuality.decode(prefs[MOBILE_QUALITY]) ?: defaults.mobileQuality,
             libraryLayout = enumOr(prefs[LIBRARY_LAYOUT], defaults.libraryLayout),
             librarySort = enumOr(prefs[LIBRARY_SORT], defaults.librarySort),
+            downloadWifiOnly = prefs[DOWNLOAD_WIFI_ONLY] ?: defaults.downloadWifiOnly,
+            offlineLimitBytes = prefs[OFFLINE_LIMIT] ?: defaults.offlineLimitBytes,
         )
     }
 
@@ -51,6 +54,14 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         store.edit { it[LIBRARY_SORT] = value.name }
     }
 
+    suspend fun setDownloadWifiOnly(value: Boolean) {
+        store.edit { it[DOWNLOAD_WIFI_ONLY] = value }
+    }
+
+    suspend fun setOfflineLimit(bytes: Long) {
+        store.edit { it[OFFLINE_LIMIT] = bytes }
+    }
+
     /** A stable id for this install, sent as the WebSocket's `client_id`. */
     suspend fun clientId(): String {
         store.data.first()[CLIENT_ID]?.let { return it }
@@ -70,5 +81,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val LIBRARY_LAYOUT = stringPreferencesKey("library_layout")
         val LIBRARY_SORT = stringPreferencesKey("library_sort")
         val CLIENT_ID = stringPreferencesKey("client_id")
+        val DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
+        val OFFLINE_LIMIT = longPreferencesKey("offline_limit_bytes")
     }
 }
