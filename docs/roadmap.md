@@ -4,7 +4,9 @@ Phase 1 (done): connect & pair, library sync, Home / Library / Album / Artist / 
 
 Phase 2 (done): offline downloads — see below for what shipped and what's left. Also done alongside it: the server 3.2 contract additions ("Signed in as …" from the pair response and `GET /api/me`, and now-playing reports to `POST /api/activity/playback`).
 
-Everything from phase 3 on is planned, not built. Each phase uses only what the server contract (`~/git/downtify/docs/mobile-client-contract.md`) already offers unless noted.
+Phase 3 (done): server search, download requests, previews and the server queue.
+
+Everything from phase 4 on is planned, not built. Each phase uses only what the server contract (`~/git/downtify/docs/mobile-client-contract.md`) already offers unless noted.
 
 ## Phase 2 — Offline downloads (Downloads board) — done
 
@@ -25,11 +27,22 @@ Left for later:
 - The "On the server" half of the Downloads board (the server's download queue) belongs to phase 3.
 - `:feature:downloads` wasn't split into its own module: the data layer lives in `:core:data` (`offline/`), which the player needs too, so the screen alone didn't earn a module.
 
-## Phase 3 — Server search and requests (Search board)
+## Phase 3 — Server search and requests (Search board) — done
 
-- A second Search tab that queries the server (`/api/songs/search`, `/api/url/resolve`) and requests downloads (`POST /api/download/url|batch|album`).
-- 30-second previews via `/api/preview` in a lightweight second player, ducking the main one.
-- The server queue card on Downloads: `GET /api/queue` kept fresh by the WebSocket progress messages ("The server is downloading N songs").
+Shipped:
+
+- One search field for both: "In your library" (on the phone, instant) and "Not in your library yet" — the server's YouTube Music search (`GET /api/songs/search`, and `GET /api/albums/search` for albums), after a 600 ms pause in the typing. The filter chips apply to both.
+- A pasted Spotify or YouTube (Music) link — track, album, playlist or artist — is resolved with `GET /api/url/resolve` instead: a header with the whole thing and "Download all N songs", then its tracks (or an artist's albums).
+- Asking the server to download: a song, an album (resolved, then queued) or everything a link points at, all through `POST /api/download/batch` with the song objects sent back exactly as the server gave them. A playlist link keeps its `playlist_url`, so the server files it as that playlist.
+- Each result then shows what the server does with it — waiting, a progress ring, ✓, or failed (tap to try again) — and albums show "Downloading 4/9". The song lands in the library by itself (`library_changed`).
+- 30-second previews: Spotify's own `preview_url`, else Deezer's through `GET /api/preview`. A small player of its own (not in the media session, the queue or the play counts) pauses the music and resumes it after. The clips come from Spotify's and Deezer's CDNs; the device token is only ever sent to the paired server.
+- Downloads › On the server: the server's queue (`GET /api/queue`, then the WebSocket's progress messages), and on "On this phone" the card "The server is downloading 13 songs · Harbor Nights · 4 of 9".
+
+Left for later:
+
+- The queue is read-only here: clearing or cancelling jobs is an admin action on the web page (devices get 403), so the app doesn't offer it.
+- Results already in the library aren't hidden from "Not in your library yet" (matching YouTube Music titles to local tags reliably needs more than the ids the server gives).
+- Artist links show the artist's albums; their top songs (`/api/artists/top_songs/url`) aren't shown yet.
 
 ## Phase 4 — Discover and podcasts
 

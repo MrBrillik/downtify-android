@@ -11,11 +11,17 @@ import com.henriquesebastiao.downtify.core.data.offline.DownloadActivity
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.model.OfflineProgress
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
+import com.henriquesebastiao.downtify.core.model.ServerJob
+import com.henriquesebastiao.downtify.core.model.ServerJobStatus
+import com.henriquesebastiao.downtify.core.model.ServerQueueSummary
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
+// A phone-sized screen: the lazy list only composes what fits.
+@Config(qualifiers = "w411dp-h914dp")
 @RunWith(AndroidJUnit4::class)
 class DownloadsScreenTest {
     @get:Rule
@@ -91,5 +97,33 @@ class DownloadsScreenTest {
         }
         compose.onNodeWithText("Nothing on this phone yet").assertExists()
         compose.onNodeWithText("Keep Liked songs offline").assertIsOn()
+    }
+
+    @Test
+    fun theServerTabListsTheServersQueue() {
+        var tab: DownloadsTab? = null
+        val jobs = listOf(
+            ServerJob("1", "Harbor Song", "Nora Vale", "Harbor Nights", "", ServerJobStatus.Downloading, 42f, ""),
+            ServerJob("2", "Low Lights", "Nora Vale", "Harbor Nights", "", ServerJobStatus.Queued, 0f, ""),
+        )
+        compose.setContent {
+            DowntifyTheme {
+                DownloadsScreen(
+                    state(items = emptyList()).copy(
+                        tab = DownloadsTab.Server,
+                        serverJobs = jobs,
+                        serverSummary = ServerQueueSummary.of(jobs),
+                    ),
+                    onKeepLiked = {},
+                    onOpen = {},
+                    onRemove = {},
+                    onTab = { tab = it },
+                )
+            }
+        }
+        compose.onNodeWithText("The server is downloading 2 songs").assertExists()
+        compose.onNodeWithText("Nora Vale · Downloading · 42%").assertExists()
+        compose.onNodeWithText("On this phone").performClick()
+        assertEquals(DownloadsTab.Phone, tab)
     }
 }

@@ -114,12 +114,47 @@
     <string name="artist_albums">Albums</string>
 
     <!-- Search -->
-    <string name="search_placeholder">Search your library</string>
+    <string name="search_placeholder">Search, or paste a Spotify or YouTube link</string>
     <string name="search_clear">Clear search</string>
     <string name="search_all">All</string>
     <string name="search_in_library">In your library</string>
     <string name="search_no_results">Nothing in your library matches \"%1$s\".</string>
-    <string name="search_prompt">Find songs, albums, artists and playlists you have on the server.</string>
+    <string name="search_prompt">Find music in your library, or new music for the server to download. A Spotify or YouTube Music link works too.</string>
+    <string name="search_not_in_library">Not in your library yet</string>
+    <string name="search_server_body">Hear a 30-second preview, or have the server download it.</string>
+    <string name="search_server_loading">Searching the server…</string>
+    <string name="search_link_loading">Opening the link…</string>
+    <string name="search_server_unreachable">The server can\'t be reached, so only your library was searched.</string>
+    <string name="search_server_failed">The server couldn\'t search just now.</string>
+    <string name="search_link_unsupported">The server can\'t open that link.</string>
+    <string name="search_link_empty">Nothing found at that link.</string>
+    <string name="search_server_nothing">The server found nothing more for \"%1$s\".</string>
+    <string name="search_retry">Try again</string>
+    <string name="search_preview_play">Play a preview of %1$s</string>
+    <string name="search_preview_stop">Stop the preview of %1$s</string>
+    <string name="search_download_to_server">Download %1$s to the server</string>
+    <string name="search_job_queued">Waiting on the server</string>
+    <string name="search_job_downloading">The server is downloading it</string>
+    <string name="search_job_done">Downloaded to the server</string>
+    <string name="search_job_error">The download failed. Try again</string>
+    <string name="search_album_progress">Downloading %1$d/%2$d</string>
+    <string name="search_album_done">On the server</string>
+    <string name="search_link_download">Download to the server</string>
+    <plurals name="search_link_download_all">
+        <item quantity="one">Download %1$d song to the server</item>
+        <item quantity="other">Download all %1$d songs to the server</item>
+    </plurals>
+    <string name="search_source_spotify">Spotify</string>
+    <string name="search_source_youtube">YT Music</string>
+    <string name="search_source_soulseek">Soulseek</string>
+    <string name="search_queued_one">The server will download %1$s</string>
+    <plurals name="search_queued_many">
+        <item quantity="one">The server will download %2$d song from %1$s</item>
+        <item quantity="other">The server will download %2$d songs from %1$s</item>
+    </plurals>
+    <string name="search_no_preview">No preview for this song</string>
+    <string name="search_request_failed">The server didn\'t take the download</string>
+    <string name="search_unreachable">The server can\'t be reached</string>
     <string name="search_kind_album">Album</string>
     <string name="search_kind_artist">Artist</string>
     <string name="search_kind_song">Song</string>
@@ -140,6 +175,20 @@
     <string name="downloads_keep_liked_body_wifi">A song you like downloads to this phone on Wi-Fi.</string>
     <string name="downloads_keep_liked_body">A song you like downloads to this phone.</string>
     <string name="downloads_on_phone">On this phone</string>
+    <string name="downloads_tab_phone">On this phone</string>
+    <string name="downloads_tab_server">On the server</string>
+    <plurals name="downloads_server_card">
+        <item quantity="one">The server is downloading %1$d song</item>
+        <item quantity="other">The server is downloading %1$d songs</item>
+    </plurals>
+    <string name="downloads_server_card_detail">%1$s · %2$d of %3$d</string>
+    <string name="downloads_server_empty_title">The server isn\'t downloading anything</string>
+    <string name="downloads_server_empty_body">Find new music in Search, or paste a Spotify or YouTube Music link there, and the server downloads it into your library.</string>
+    <string name="downloads_server_job_queued">Waiting</string>
+    <string name="downloads_server_job_downloading">Downloading · %1$d%%</string>
+    <string name="downloads_server_job_done">In your library</string>
+    <string name="downloads_server_job_error">Failed</string>
+    <string name="downloads_server_job_error_detail">Failed: %1$s</string>
     <string name="downloads_empty_title">Nothing on this phone yet</string>
     <string name="downloads_empty_body">Tap Download on an album or a playlist, or keep your Liked songs offline, to listen without the server.</string>
     <plurals name="downloads_status_done">

@@ -1,5 +1,7 @@
 package com.henriquesebastiao.downtify.core.network.live
 
+import com.henriquesebastiao.downtify.core.model.ServerJob
+import com.henriquesebastiao.downtify.core.network.CatalogJson
 import com.henriquesebastiao.downtify.core.network.NetworkJson
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.network.di.DefaultClient
@@ -28,6 +30,12 @@ sealed interface LiveEvent {
 
     /** Likes changed somewhere: refetch them. */
     data object LikesChanged : LiveEvent
+
+    /** A server download moved on (no `type`; the job's own fields). */
+    data class DownloadProgress(val job: ServerJob) : LiveEvent
+
+    /** Many downloads were queued at once: refetch `GET /api/queue`. */
+    data object QueueReload : LiveEvent
 
     /**
      * The socket was closed with 4401 (the device was unpaired while connected)
@@ -101,12 +109,14 @@ class LiveUpdatesClient @Inject constructor(@DefaultClient client: OkHttpClient)
         private const val HTTP_FORBIDDEN = 403
         private const val PING_SECONDS = 30L
 
-        /** The events the app acts on; everything else (download progress, podcasts, …) is ignored. */
+        /** The events the app acts on; everything else (podcasts, …) is ignored. */
         fun parse(text: String): LiveEvent? {
             val json = runCatching { NetworkJson.parseToJsonElement(text) as? JsonObject }.getOrNull() ?: return null
             return when (json["type"]?.jsonPrimitive?.content) {
                 "library_changed" -> LiveEvent.LibraryChanged
                 "likes" -> LiveEvent.LikesChanged
+                "queue_reload" -> LiveEvent.QueueReload
+                null -> CatalogJson.job(json)?.let(LiveEvent::DownloadProgress)
                 else -> null
             }
         }

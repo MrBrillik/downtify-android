@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Card
@@ -27,6 +29,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -60,6 +65,9 @@ import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.OfflinePlanner
 import com.henriquesebastiao.downtify.core.model.OfflineProgress
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
+import com.henriquesebastiao.downtify.core.model.ServerJob
+import com.henriquesebastiao.downtify.core.model.ServerJobStatus
+import com.henriquesebastiao.downtify.core.model.ServerQueueSummary
 import com.henriquesebastiao.downtify.core.model.formatBytes
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 
@@ -75,6 +83,7 @@ fun DownloadsRoute(
         onKeepLiked = viewModel::setKeepLiked,
         onOpen = onOpen,
         onRemove = viewModel::remove,
+        onTab = viewModel::selectTab,
         modifier = modifier,
     )
 }
@@ -88,6 +97,7 @@ fun DownloadsScreen(
     onOpen: (DownloadItem) -> Unit,
     onRemove: (DownloadItem) -> Unit,
     modifier: Modifier = Modifier,
+    onTab: (DownloadsTab) -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier,
@@ -103,6 +113,11 @@ fun DownloadsScreen(
             contentPadding = PaddingValues(bottom = Spacing.xl),
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
+            item(key = "tabs") { Tabs(state.tab, onTab) }
+            if (state.tab == DownloadsTab.Server) {
+                serverTab(state)
+                return@LazyColumn
+            }
             item(key = "storage") {
                 StorageCard(state, Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xs))
             }
@@ -130,9 +145,172 @@ fun DownloadsScreen(
                     DownloadRow(item, state, onOpen = { onOpen(item) }, onRemove = { onRemove(item) })
                 }
             }
+            if (state.serverSummary.active > 0) {
+                item(key = "server-card") { ServerCard(state, onClick = { onTab(DownloadsTab.Server) }) }
+            }
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun Tabs(selected: DownloadsTab, onTab: (DownloadsTab) -> Unit) {
+    SingleChoiceSegmentedButtonRow(
+        Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+    ) {
+        DownloadsTab.entries.forEachIndexed { index, tab ->
+            SegmentedButton(
+                selected = tab == selected,
+                onClick = { onTab(tab) },
+                shape = SegmentedButtonDefaults.itemShape(index, DownloadsTab.entries.size),
+            ) {
+                Text(
+                    stringResource(
+                        if (tab == DownloadsTab.Phone) R.string.downloads_tab_phone else R.string.downloads_tab_server,
+                    ),
+                )
+            }
+        }
+    }
+}
+
+/** "The server is downloading 13 songs · Harbor Nights · 4 of 9" — opens the server's side. */
+@Composable
+private fun ServerCard(state: DownloadsUiState, onClick: () -> Unit) {
+    val summary = state.serverSummary
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.md),
+    ) {
+        Row(
+            Modifier.heightIn(min = 64.dp).padding(start = Spacing.lg, end = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            Icon(
+                painterResource(DowntifyIcons.Server),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(Modifier.weight(1f).padding(vertical = Spacing.md)) {
+                Text(
+                    pluralStringResource(R.plurals.downloads_server_card, summary.active, summary.active),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                if (summary.currentAlbum.isNotBlank() && summary.currentAlbumTotal > 1) {
+                    Text(
+                        stringResource(
+                            R.string.downloads_server_card_detail,
+                            summary.currentAlbum,
+                            summary.currentAlbumDone,
+                            summary.currentAlbumTotal,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Icon(painterResource(DowntifyIcons.ChevronRight), contentDescription = null)
+        }
+    }
+}
+
+private fun LazyListScope.serverTab(state: DownloadsUiState) {
+    if (state.serverJobs.isEmpty()) {
+        item(key = "server-empty") {
+            EmptyState(
+                icon = DowntifyIcons.Server,
+                title = stringResource(R.string.downloads_server_empty_title),
+                body = stringResource(R.string.downloads_server_empty_body),
+                modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xl),
+            )
+        }
+        return
+    }
+    if (state.serverSummary.active > 0) {
+        item(key = "server-summary") {
+            Text(
+                pluralStringResource(
+                    R.plurals.downloads_server_card,
+                    state.serverSummary.active,
+                    state.serverSummary.active,
+                ),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = Spacing.lg, top = Spacing.md, bottom = Spacing.xs),
+            )
+        }
+    }
+    items(state.serverJobs, key = { "job:${it.songId}" }) { job -> ServerJobRow(job) }
+}
+
+@Composable
+private fun ServerJobRow(job: ServerJob) {
+    ListItem(
+        headlineContent = { Text(job.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 2.dp)) {
+                if (job.status == ServerJobStatus.Downloading) {
+                    LinearProgressIndicator(
+                        progress = { job.progress / PERCENT },
+                        strokeCap = StrokeCap.Round,
+                        modifier = Modifier.fillMaxWidth().padding(end = Spacing.sm),
+                    )
+                }
+                Text(
+                    listOf(job.artist, jobStatus(job)).filter { it.isNotBlank() }.joinToString(" · "),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (job.status ==
+                        ServerJobStatus.Error
+                    ) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        Color.Unspecified
+                    },
+                )
+            }
+        },
+        leadingContent = {
+            CoverArt(url = job.coverUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.size(56.dp))
+        },
+        trailingContent = if (job.status == ServerJobStatus.Done) {
+            {
+                Icon(
+                    painterResource(DowntifyIcons.CheckCircle),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        } else {
+            null
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
+}
+
+@Composable
+private fun jobStatus(job: ServerJob): String = when (job.status) {
+    ServerJobStatus.Queued -> stringResource(R.string.downloads_server_job_queued)
+
+    ServerJobStatus.Downloading -> stringResource(R.string.downloads_server_job_downloading, job.progress.toInt())
+
+    ServerJobStatus.Done -> stringResource(R.string.downloads_server_job_done)
+
+    ServerJobStatus.Error -> if (job.message.isBlank()) {
+        stringResource(R.string.downloads_server_job_error)
+    } else {
+        stringResource(R.string.downloads_server_job_error_detail, job.message)
+    }
+}
+
+private const val PERCENT = 100f
 
 @Composable
 private fun StorageCard(state: DownloadsUiState, modifier: Modifier = Modifier) {
@@ -332,6 +510,28 @@ private val previewState = DownloadsUiState(
 private fun DownloadsPreview() {
     DowntifyTheme {
         DownloadsScreen(state = previewState, onKeepLiked = {}, onOpen = {}, onRemove = {})
+    }
+}
+
+@PreviewLightDark
+@Composable
+private fun DownloadsServerPreview() {
+    val jobs = listOf(
+        ServerJob("1", "Harbor Song", "Nora Vale", "Harbor Nights", "", ServerJobStatus.Downloading, 42f, ""),
+        ServerJob("2", "Low Lights", "Nora Vale", "Harbor Nights", "", ServerJobStatus.Queued, 0f, ""),
+        ServerJob("3", "Tides", "Lumen Field", "Tides", "", ServerJobStatus.Done, 100f, ""),
+    )
+    DowntifyTheme {
+        DownloadsScreen(
+            state = previewState.copy(
+                tab = DownloadsTab.Server,
+                serverJobs = jobs,
+                serverSummary = ServerQueueSummary.of(jobs),
+            ),
+            onKeepLiked = {},
+            onOpen = {},
+            onRemove = {},
+        )
     }
 }
 

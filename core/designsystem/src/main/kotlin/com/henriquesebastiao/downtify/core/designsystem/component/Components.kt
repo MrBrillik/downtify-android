@@ -28,9 +28,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
@@ -153,6 +155,39 @@ fun StatusPill(
         }
     }
 }
+
+/** Where a search result comes from, in its brand's color (the Search board's badges). */
+enum class SourceBrand { Spotify, YouTube, Neutral }
+
+/** A tiny label before a result's artist: "Spotify", "YT Music", "Soulseek". */
+@Composable
+fun SourceBadge(text: String, brand: SourceBrand, modifier: Modifier = Modifier) {
+    val dark = MaterialTheme.colorScheme.surface.luminance() < DARK_LUMINANCE
+    val (container, content) = when (brand) {
+        SourceBrand.Spotify -> if (dark) SpotifyDark else SpotifyLight
+
+        SourceBrand.YouTube -> if (dark) YouTubeDark else YouTubeLight
+
+        SourceBrand.Neutral ->
+            MaterialTheme.colorScheme.surfaceContainerHighest to
+                MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(color = container, contentColor = content, shape = RoundedCornerShape(4.dp), modifier = modifier) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+        )
+    }
+}
+
+// The services' own greens and reds, softened as the Search board draws them.
+private val SpotifyDark = Color(0x291DB954) to Color(0xFF3BD16F)
+private val SpotifyLight = Color(0x241DB954) to Color(0xFF0B7A34)
+private val YouTubeDark = Color(0x24FF4848) to Color(0xFFFF7A7A)
+private val YouTubeLight = Color(0x1FFF0000) to Color(0xFFB3261E)
+private const val DARK_LUMINANCE = 0.5f
 
 @PreviewLightDark
 @Composable

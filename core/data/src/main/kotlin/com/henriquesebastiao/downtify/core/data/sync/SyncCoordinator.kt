@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import com.henriquesebastiao.downtify.core.data.catalog.ServerQueueRepository
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
@@ -42,6 +43,7 @@ class SyncCoordinator @Inject constructor(
     private val listens: ListenReporter,
     private val settings: SettingsRepository,
     private val live: LiveUpdatesClient,
+    private val serverQueue: ServerQueueRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val syncRequests = Channel<Boolean>(Channel.CONFLATED)
@@ -92,6 +94,7 @@ class SyncCoordinator @Inject constructor(
                             if (attempt > 0) requestSync()
                             attempt = 0
                             server.markConnected()
+                            serverQueue.refresh()
                         }
 
                         LiveEvent.LibraryChanged -> requestSync()
@@ -99,6 +102,9 @@ class SyncCoordinator @Inject constructor(
                         LiveEvent.LikesChanged -> library.refreshLikes()
 
                         is LiveEvent.Refused -> server.verifyStillPaired()
+
+                        is LiveEvent.DownloadProgress, LiveEvent.QueueReload ->
+                            if (serverQueue.onEvent(event)) serverQueue.refresh()
                     }
                 }
             } catch (e: LiveUpdatesClosed) {

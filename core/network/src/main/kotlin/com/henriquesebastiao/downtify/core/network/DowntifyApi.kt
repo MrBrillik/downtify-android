@@ -12,7 +12,10 @@ import com.henriquesebastiao.downtify.core.network.dto.PairRequest
 import com.henriquesebastiao.downtify.core.network.dto.PairResponse
 import com.henriquesebastiao.downtify.core.network.dto.PlaybackActivityRequest
 import com.henriquesebastiao.downtify.core.network.dto.PlaylistDto
+import com.henriquesebastiao.downtify.core.network.dto.PreviewResponse
 import com.henriquesebastiao.downtify.core.network.dto.ServerInfoDto
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -53,6 +56,29 @@ interface DowntifyApi {
 
     @GET("api/v1/tracks/{id}/lyrics")
     suspend fun lyrics(@Path("id") trackId: String): LyricsDto
+
+    @GET("api/songs/search")
+    suspend fun searchSongs(@Query("query") query: String): JsonArray
+
+    /** Undocumented in the API reference, but in the server's code and allowed to devices. */
+    @GET("api/albums/search")
+    suspend fun searchAlbums(@Query("query") query: String, @Query("limit") limit: Int): JsonArray
+
+    @GET("api/url/resolve")
+    suspend fun resolve(@Query("url") url: String): JsonObject
+
+    @GET("api/preview")
+    suspend fun preview(
+        @Query("artist") artist: String,
+        @Query("title") title: String,
+        @Query("duration") duration: Int?,
+    ): PreviewResponse
+
+    @POST("api/download/batch")
+    suspend fun downloadBatch(@Body body: JsonObject): Response<Unit>
+
+    @GET("api/queue")
+    suspend fun queue(): JsonArray
 
     @GET("api/me")
     suspend fun me(): MeResponse

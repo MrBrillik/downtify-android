@@ -95,6 +95,10 @@ data class PairResponse(
 @Serializable
 data class UserDto(val username: String = "", val role: String = "")
 
+/** `GET /api/preview`: a Deezer clip, short-lived; blank when there's none. */
+@Serializable
+data class PreviewResponse(@SerialName("preview_url") val previewUrl: String = "")
+
 /** `GET /api/me`. */
 @Serializable
 data class MeResponse(val user: UserDto? = null)

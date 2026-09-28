@@ -2,7 +2,7 @@
 
 The official Android client for [Downtify](https://github.com/henriquesebastiao/downtify), the self-hosted music server. It finds your server on the home network (or takes an address you type), pairs with it, syncs the library and streams it — original quality on Wi-Fi, transcoded on mobile data — with the system media notification, lock screen and Bluetooth controls.
 
-Status: **phase 2** (connect & pair, library sync, browsing, search, streaming, play reports, offline downloads). Server search, casting and widgets come later — see [docs/roadmap.md](docs/roadmap.md).
+Status: **phase 3** (connect & pair, library sync, browsing, streaming, play reports, offline downloads, server search with previews and download requests). Discover, podcasts, casting and widgets come later — see [docs/roadmap.md](docs/roadmap.md).
 
 > [!IMPORTANT]
 > This app is currently in the development and testing phase; it will contain bugs. Integration with Downtify is also still being developed and tested.
@@ -46,8 +46,8 @@ Notes:
 | `:app` | Activity, navigation, all screens (`feature/*`), strings |
 | `:core:model` | Pure Kotlin: domain types and logic (address normalising, pairing URI, stream policy, grouping, listen counter, LRC parser, search) |
 | `:core:network` | OkHttp/Retrofit client for the contract, NSD discovery, WebSocket, Keystore-encrypted session store |
-| `:core:data` | Room (library, playlists, likes, recents, listen queue, offline index), DataStore settings, sync, offline downloads and the listen flusher (WorkManager) |
-| `:core:player` | Media3 `MediaSessionService`, stream URL resolving, cache, listen tracking, UI-side `PlayerController` |
+| `:core:data` | Room (library, playlists, likes, recents, listen queue, offline index), DataStore settings, sync, offline downloads, the listen flusher (WorkManager), server search and the server's download queue |
+| `:core:player` | Media3 `MediaSessionService`, stream URL resolving, cache, listen and activity tracking, UI-side `PlayerController`, the preview player |
 | `:core:designsystem` | Material 3 theme (brand tokens, dark/light, dynamic color), fonts, icons, logo, shared components |
 | `build-logic` | Gradle convention plugins |
 

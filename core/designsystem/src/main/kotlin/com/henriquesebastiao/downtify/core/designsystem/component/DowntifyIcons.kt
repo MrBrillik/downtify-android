@@ -110,4 +110,6 @@ object DowntifyIcons {
     @DrawableRes val Delete = R.drawable.ic_delete
 
     @DrawableRes val Storage = R.drawable.ic_storage
+
+    @DrawableRes val Cloud = R.drawable.ic_cloud
 }

@@ -11,7 +11,15 @@ Things the app needs from the server that it doesn't offer yet, and places where
 - **What the app does:** treats a refused handshake as "maybe revoked" and confirms with `GET /api/auth/status` before signing out (a proxy that blocks WebSockets also gives 403, so it can't sign out on 403 alone). Verified against a running server: unpairing the device while the app was connected closed its socket, the app checked `/api/auth/status`, dropped the token, stopped playback and returned to the connect screen.
 - **Suggested fix:** document the 403 case, or accept the socket and then close with 4401 so clients see one signal.
 
+### `GET /api/albums/search` isn't in the API reference
+
+The web UI's album search exists in the server's code (`api.py`, `search_albums_endpoint`) and the reference only mentions it in passing (`search_albums` preference). The app uses it for the albums under "Not in your library yet". It answers `[]` when the user turned album search off, which the app shows as "no albums". Worth a section in the reference, with the album summary's fields.
+
 ## Nice to have
+
+### Already-downloaded results
+
+Server search results carry YouTube Music or Spotify ids; library tracks carry Downtify's own ids. Nothing links the two, so the app can't tell that a result is already in the library. A `track_id` on a search result the server already has (it knows the source id of what it downloaded) would let the app show "In your library" instead of a download button.
 
 ### Recently played across devices
 

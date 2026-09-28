@@ -130,6 +130,10 @@ class PlayerController @Inject constructor(
         }
     }
 
+    fun pause() = command { it.pause() }
+
+    fun resume() = command { it.play() }
+
     fun next() = command { it.seekToNext() }
 
     fun previous() = command { it.seekToPrevious() }
