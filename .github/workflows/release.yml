@@ -102,7 +102,7 @@ jobs:
       - name: Name the assets
         id: assets
         run: |
-          name="downtify-android-$TAG.apk"
+          name="downtify-$TAG.apk"
           cp app/build/outputs/apk/release/app-release.apk "$name"
           sha256sum "$name" > "$name.sha256"
           echo "apk=$name" >> "$GITHUB_OUTPUT"
