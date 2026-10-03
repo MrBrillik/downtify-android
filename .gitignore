@@ -37,6 +37,8 @@ commit-message.md
 
 # Package Files #
 *.jar
+# The Gradle wrapper must be committed: `./gradlew` can't start without it.
+!gradle/wrapper/gradle-wrapper.jar
 *.war
 *.nar
 *.ear
