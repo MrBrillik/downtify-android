@@ -54,6 +54,11 @@ Native Android client for the Downtify self-hosted music server. Kotlin, Jetpack
 - Compose UI tests run on the JVM with Robolectric (`app/src/test`, SDK 34 — newer sandboxes need a Java 21 test JVM). Test the stateless `XScreen`s.
 - When a change affects behaviour against the server, verify it for real (emulator + a scratch server instance) and say exactly what you ran and what you didn't.
 
+## Releases
+
+- The version lives only in `app/build.gradle.kts` (`versionName`, and `versionCode`, which must rise with every release). Publishing a GitHub release tagged `v<versionName>` builds and attaches the signed APK in CI. Steps and the one-time key setup: `docs/releasing.md`.
+- The release build is minified by R8: a library that works by reflection needs a keep rule in `app/proguard-rules.pro`. Run the release APK on a device (pair, sync, play, open the QR scanner) after adding a dependency.
+
 ## Commits
 
 - Don't commit or push; the maintainer commits by hand. When a piece of work is finished, write a suggested message to `commit-message.md` at the repo root (it's git-ignored).

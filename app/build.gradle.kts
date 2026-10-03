@@ -11,8 +11,23 @@ android {
     defaultConfig {
         applicationId = "com.henriquesebastiao.downtify"
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.1.0-beta"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // The release key comes from the environment (the GitHub Actions release workflow sets these;
+    // see .github/workflows/release.yml). Without it — a local `assembleRelease` — the APK is signed
+    // with the debug key: it installs, but can't be updated by a release signed with the real key.
+    val releaseKeystore = providers.environmentVariable("DOWNTIFY_KEYSTORE_FILE").orNull
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = providers.environmentVariable("DOWNTIFY_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("DOWNTIFY_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("DOWNTIFY_KEY_PASSWORD").get()
+            }
+        }
     }
 
     buildTypes {
@@ -23,9 +38,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // No release keystore in the repo: sign locally with the debug key so
-            // `assembleRelease` works. Replace with a real signing config to ship.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
