@@ -9,12 +9,9 @@ Status: **phase 4** (connect & pair, library sync, browsing, streaming, play rep
 
 ## Screenshots
 
-<img width="30%" vspace="20" src="https://github.com/user-attachments/assets/916b7bbb-2cbc-4c6f-98b8-e9d7ce0547f0" />
-<img width="30%" vspace="20" src="https://github.com/user-attachments/assets/06935b7b-0b31-42a6-8d41-bc3276463d02" />
-<img width="30%" vspace="20" src="https://github.com/user-attachments/assets/d408af5c-c019-470a-9f2e-5af7279ac33d" />
-<img width="30%" vspace="20" src="https://github.com/user-attachments/assets/6d4c2580-0a71-4f42-b30e-5a3ddb5d8b93" />
-<img width="30%" vspace="20" src="https://github.com/user-attachments/assets/df3ad441-3286-4bd1-b5a4-c950f6d1bd42" />
-<img width="30%" vspace="20" src="https://github.com/user-attachments/assets/2538bf27-99be-4687-a13f-fbc4f28ceefa" />
+<img width="30%" vspace="20" src="https://github.com/user-attachments/assets/2faac8b4-1567-49d5-ac2c-44451cc8a0bc" />
+<img width="30%" vspace="20" src="https://github.com/user-attachments/assets/b25e5433-80c6-4ffb-a74e-1f9152b53782" />
+<img width="30%" vspace="20" src="https://github.com/user-attachments/assets/e4196813-6b84-4061-a544-d373cd6c928a" />
 
 ## Requirements
 
