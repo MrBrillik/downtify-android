@@ -2,12 +2,18 @@ package com.henriquesebastiao.downtify.feature.player
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.henriquesebastiao.downtify.core.data.catalog.CatalogRepository
+import com.henriquesebastiao.downtify.core.data.catalog.ServerQueueRepository
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.session.ServerRepository
 import com.henriquesebastiao.downtify.core.model.Lyrics
 import com.henriquesebastiao.downtify.core.model.PlaybackSpeeds
+import com.henriquesebastiao.downtify.core.model.RemoteSong
+import com.henriquesebastiao.downtify.core.model.ServerJob
+import com.henriquesebastiao.downtify.core.network.CatalogJson
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.core.player.PlayerState
+import com.henriquesebastiao.downtify.core.player.PlayingStream
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +24,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 
 /** Lyrics of the current track, loaded when the lyrics sheet opens. */
 sealed interface LyricsState {
@@ -31,6 +39,8 @@ class PlayerViewModel @Inject constructor(
     private val player: PlayerController,
     private val library: LibraryRepository,
     server: ServerRepository,
+    private val catalog: CatalogRepository,
+    queue: ServerQueueRepository,
 ) : ViewModel() {
     val state: StateFlow<PlayerState> = player.state
 
@@ -40,6 +50,16 @@ class PlayerViewModel @Inject constructor(
 
     val serverName: StateFlow<String> = server.session.map { it?.serverName.orEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), "")
+
+    /** The server's download job for the playing stream, if it asked for it. */
+    val streamJob: StateFlow<ServerJob?> = combine(queue.jobs, player.state) { jobs, s ->
+        val stream = s.stream ?: return@combine null
+        jobs.values.firstOrNull { job ->
+            job.status.isActive && (job.songId == stream.videoId || matches(stream, job))
+        } ?: jobs.values.firstOrNull { job ->
+            !job.status.isActive && job.songId == stream.videoId
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
 
     private val lyricsState = MutableStateFlow<LyricsState>(LyricsState.Loading)
     val lyrics: StateFlow<LyricsState> = lyricsState.asStateFlow()
@@ -61,6 +81,21 @@ class PlayerViewModel @Inject constructor(
         val liked = isLiked.value
         viewModelScope.launch { library.setLiked(id, !liked) }
     }
+
+    /** Asks the server to download the playing stream (it keeps streaming). */
+    fun downloadStream() {
+        val stream = state.value.stream ?: return
+        val song = streamSong(stream) ?: return
+        viewModelScope.launch { catalog.download(listOf(song)) }
+    }
+
+    private fun matches(stream: PlayingStream, job: ServerJob): Boolean =
+        job.title.equals(stream.title, ignoreCase = true) &&
+            job.artist.equals(stream.artist, ignoreCase = true)
+
+    private fun streamSong(stream: PlayingStream): RemoteSong? = runCatching {
+        CatalogJson.song(Json.parseToJsonElement(stream.raw) as JsonObject)
+    }.getOrNull()
 
     /** Loads the lyrics of the current track (cached by the repository). */
     fun loadLyrics() {

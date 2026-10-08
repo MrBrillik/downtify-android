@@ -48,30 +48,30 @@ import com.henriquesebastiao.downtify.core.model.ServerDownloadProgress
 import com.henriquesebastiao.downtify.core.model.ServerJob
 import com.henriquesebastiao.downtify.core.model.ServerJobStatus
 import com.henriquesebastiao.downtify.core.model.formatDuration
-import com.henriquesebastiao.downtify.core.player.PreviewState
 
 /**
- * A song the server can download: its cover plays a 30-second preview, the
- * button asks the server for it, and then shows how the server is getting on.
+ * A song the server can download: its cover plays it in full from the
+ * server, the wand opens what sounds like it, and the button asks the
+ * server for the file, then shows how the download is getting on.
  */
 @Composable
 internal fun RemoteSongRow(
     song: RemoteSong,
     job: ServerJob?,
-    preview: PreviewState?,
-    lookingUp: Boolean,
-    onPreview: () -> Unit,
+    playing: Boolean,
+    resolving: Boolean,
+    onPlay: () -> Unit,
+    onSimilar: () -> Unit,
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val previewing = preview?.key == song.id
     ListItem(
         headlineContent = {
             Text(
                 song.title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = if (previewing) MaterialTheme.colorScheme.primary else Color.Unspecified,
+                color = if (playing) MaterialTheme.colorScheme.primary else Color.Unspecified,
                 fontWeight = FontWeight.SemiBold,
             )
         },
@@ -88,31 +88,36 @@ internal fun RemoteSongRow(
             }
         },
         leadingContent = {
-            PreviewCover(song, previewing, preview?.takeIf { previewing }, lookingUp, onPreview)
+            PlayCover(song, playing, resolving, onPlay)
         },
-        trailingContent = { JobButton(song.title, job, onDownload) },
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onSimilar) {
+                    Icon(
+                        painterResource(DowntifyIcons.Explore),
+                        contentDescription = stringResource(R.string.search_similar, song.title),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                JobButton(song.title, job, onDownload)
+            }
+        },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = modifier,
     )
 }
 
 @Composable
-private fun PreviewCover(
-    song: RemoteSong,
-    previewing: Boolean,
-    preview: PreviewState?,
-    lookingUp: Boolean,
-    onPreview: () -> Unit,
-) {
+private fun PlayCover(song: RemoteSong, playing: Boolean, resolving: Boolean, onPlay: () -> Unit) {
     val label = stringResource(
-        if (previewing) R.string.search_preview_stop else R.string.search_preview_play,
+        if (playing) R.string.search_stop_full else R.string.search_play_full,
         song.title,
     )
     Box(
         Modifier
             .size(56.dp)
             .clip(MaterialTheme.shapes.small)
-            .clickable(role = Role.Button, onClick = onPreview)
+            .clickable(role = Role.Button, onClick = onPlay)
             .semantics { contentDescription = label },
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -122,27 +127,18 @@ private fun PreviewCover(
                 contentAlignment = Alignment.Center,
             ) {
                 when {
-                    lookingUp || preview?.loading == true -> CircularProgressIndicator(
+                    resolving -> CircularProgressIndicator(
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = Color.White,
                         modifier = Modifier.size(24.dp),
                     )
 
-                    preview != null -> {
-                        CircularProgressIndicator(
-                            progress = { preview.progress },
-                            strokeWidth = 2.5.dp,
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = Color.White.copy(alpha = TRACK),
-                            modifier = Modifier.size(28.dp),
-                        )
-                        Icon(
-                            painterResource(DowntifyIcons.Pause),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(12.dp),
-                        )
-                    }
+                    playing -> Icon(
+                        painterResource(DowntifyIcons.Pause),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp),
+                    )
 
                     else -> Icon(
                         painterResource(DowntifyIcons.Play),
@@ -332,5 +328,4 @@ internal fun LinkHeader(link: ResolvedLink, requested: Boolean, onDownload: () -
 }
 
 private const val SCRIM = 0.6f
-private const val TRACK = 0.25f
 private const val PERCENT = 100f

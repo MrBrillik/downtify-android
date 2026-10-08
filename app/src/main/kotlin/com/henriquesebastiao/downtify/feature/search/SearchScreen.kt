@@ -52,6 +52,7 @@ import com.henriquesebastiao.downtify.core.model.RemoteAlbum
 import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ResolvedLink
 import com.henriquesebastiao.downtify.core.model.ServerDownloadProgress
+import com.henriquesebastiao.downtify.core.model.StreamVideo
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.ui.common.CoverRow
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
@@ -65,6 +66,7 @@ data class SearchNavigation(
     val onAlbum: (String) -> Unit = {},
     val onArtist: (String) -> Unit = {},
     val onPlaylist: (String) -> Unit = {},
+    val onSimilar: (artist: String, title: String) -> Unit = { _, _ -> },
 )
 
 @Composable
@@ -92,7 +94,7 @@ fun SearchRoute(
                         resources.getString(R.string.search_queued_one, message.title)
                     }
 
-                    SearchMessage.NoPreview -> resources.getString(R.string.search_no_preview)
+                    SearchMessage.NoStream -> resources.getString(R.string.search_no_stream)
 
                     SearchMessage.RequestFailed -> resources.getString(R.string.search_request_failed)
 
@@ -110,7 +112,7 @@ fun SearchRoute(
         onPlaySong = viewModel::playSong,
         remote = RemoteActions(
             onRetry = viewModel::retry,
-            onPreview = viewModel::togglePreview,
+            onPlay = viewModel::playRemote,
             onDownload = viewModel::download,
             onDownloadAlbum = viewModel::downloadAlbum,
             onDownloadLink = viewModel::downloadLink,
@@ -123,7 +125,7 @@ fun SearchRoute(
 /** What the server's results can do. */
 data class RemoteActions(
     val onRetry: () -> Unit = {},
-    val onPreview: (RemoteSong) -> Unit = {},
+    val onPlay: (RemoteSong, List<RemoteSong>) -> Unit = { _, _ -> },
     val onDownload: (RemoteSong) -> Unit = {},
     val onDownloadAlbum: (RemoteAlbum) -> Unit = {},
     val onDownloadLink: (ResolvedLink) -> Unit = {},
@@ -277,12 +279,18 @@ private fun Results(
                     isPlaying = state.isPlaying,
                 )
             }
-            if (showServer) serverSection(query, state, remote, divider = !results.isEmpty)
+            if (showServer) serverSection(query, state, navigation, remote, divider = !results.isEmpty)
         }
     }
 }
 
-private fun LazyListScope.serverSection(query: String, state: SearchUiState, remote: RemoteActions, divider: Boolean) {
+private fun LazyListScope.serverSection(
+    query: String,
+    state: SearchUiState,
+    navigation: SearchNavigation,
+    remote: RemoteActions,
+    divider: Boolean,
+) {
     val server = state.server
     if (server == ServerResults.Idle) return
     val showSongs = state.isLink || state.filter != SearchFilter.Albums
@@ -311,15 +319,20 @@ private fun LazyListScope.serverSection(query: String, state: SearchUiState, rem
             if (server.songs.isEmpty() && server.albums.isEmpty()) {
                 item(key = "server-nothing") { StatusLine(stringResource(R.string.search_server_nothing, query)) }
             }
-            if (showSongs) remoteSongs(server.songs, state, remote)
+            if (showSongs) remoteSongs(server.songs, state, navigation, remote)
             if (showAlbums) remoteAlbums(server.albums, state, remote)
         }
 
-        is ServerResults.Link -> linkResults(server.link, state, remote)
+        is ServerResults.Link -> linkResults(server.link, state, navigation, remote)
     }
 }
 
-private fun LazyListScope.linkResults(link: ResolvedLink, state: SearchUiState, remote: RemoteActions) {
+private fun LazyListScope.linkResults(
+    link: ResolvedLink,
+    state: SearchUiState,
+    navigation: SearchNavigation,
+    remote: RemoteActions,
+) {
     item(key = "link") {
         LinkHeader(
             link = link,
@@ -327,7 +340,7 @@ private fun LazyListScope.linkResults(link: ResolvedLink, state: SearchUiState, 
             onDownload = { remote.onDownloadLink(link) },
         )
     }
-    remoteSongs(link.tracks, state, remote)
+    remoteSongs(link.tracks, state, navigation, remote)
     remoteAlbums(link.albums, state, remote)
 }
 
@@ -346,14 +359,20 @@ private fun FailedLine(status: Int?, isLink: Boolean, onRetry: () -> Unit) {
     )
 }
 
-private fun LazyListScope.remoteSongs(songs: List<RemoteSong>, state: SearchUiState, remote: RemoteActions) {
+private fun LazyListScope.remoteSongs(
+    songs: List<RemoteSong>,
+    state: SearchUiState,
+    navigation: SearchNavigation,
+    remote: RemoteActions,
+) {
     items(songs, key = { "remote:${it.id}" }) { song ->
         RemoteSongRow(
             song = song,
             job = state.jobs[song.id],
-            preview = state.preview,
-            lookingUp = state.previewLookup == song.id,
-            onPreview = { remote.onPreview(song) },
+            playing = state.playingStreamId?.let { StreamVideo.videoIdOf(song) == it } == true,
+            resolving = state.resolvingStreamId == song.id,
+            onPlay = { remote.onPlay(song, songs) },
+            onSimilar = { navigation.onSimilar(song.artist, song.title) },
             onDownload = { remote.onDownload(song) },
         )
     }

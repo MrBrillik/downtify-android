@@ -48,8 +48,8 @@ class SearchServerTest {
     }
 
     @Test
-    fun serverResultsCanBePreviewedAndDownloaded() {
-        var previewed: RemoteSong? = null
+    fun serverResultsPlayInFullAndDownload() {
+        var played: Pair<RemoteSong, List<RemoteSong>>? = null
         var downloaded: RemoteSong? = null
         val harbor = song("s1", "Harbor Song", CatalogSource.Spotify)
         show(
@@ -57,13 +57,14 @@ class SearchServerTest {
                 query = "harbor",
                 server = ServerResults.Found(listOf(harbor), listOf(album)),
             ),
-            RemoteActions(onPreview = { previewed = it }, onDownload = { downloaded = it }),
+            RemoteActions(onPlay = { song, songs -> played = song to songs }, onDownload = { downloaded = it }),
         )
         compose.onNodeWithText("Not in your library yet").assertExists()
         compose.onNodeWithText("Spotify").assertExists()
-        compose.onNodeWithContentDescription("Play a preview of Harbor Song").performClick()
+        compose.onNodeWithContentDescription("Play Harbor Song in full").performClick()
         compose.onNodeWithContentDescription("Download Harbor Song to the server").performClick()
-        assertEquals(harbor, previewed)
+        assertEquals(harbor, played?.first)
+        assertEquals(listOf(harbor), played?.second)
         assertEquals(harbor, downloaded)
     }
 

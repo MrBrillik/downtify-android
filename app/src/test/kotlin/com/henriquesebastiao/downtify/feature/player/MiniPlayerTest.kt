@@ -7,6 +7,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.player.PlayerState
+import com.henriquesebastiao.downtify.core.player.PlayingStream
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -44,5 +45,30 @@ class MiniPlayerTest {
             DowntifyTheme { MiniPlayer(state = PlayerState(), onOpen = {}, onTogglePlay = {}) }
         }
         compose.onNodeWithContentDescription("Play").assertDoesNotExist()
+    }
+
+    @Test
+    fun aStreamShowsSimilarAndDownload() {
+        var similar: Pair<String, String>? = null
+        var downloaded = 0
+        compose.setContent {
+            DowntifyTheme {
+                MiniPlayer(
+                    state = PlayerState(
+                        stream = PlayingStream("dQw4w9WgXcQ", "Believe", "Cher", "", "{}"),
+                        isPlaying = true,
+                    ),
+                    onOpen = {},
+                    onTogglePlay = {},
+                    onSimilar = { artist, title -> similar = artist to title },
+                    onDownloadStream = { downloaded++ },
+                )
+            }
+        }
+        compose.onNodeWithText("Believe").assertExists()
+        compose.onNodeWithContentDescription("Tracks like Believe").performClick()
+        compose.onNodeWithContentDescription("Download Believe to the server").performClick()
+        assertEquals("Cher" to "Believe", similar)
+        assertEquals(1, downloaded)
     }
 }
