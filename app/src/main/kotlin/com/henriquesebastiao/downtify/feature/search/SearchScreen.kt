@@ -53,7 +53,9 @@ import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ResolvedLink
 import com.henriquesebastiao.downtify.core.model.ServerDownloadProgress
 import com.henriquesebastiao.downtify.core.model.StreamVideo
+import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.ServerUrls
+import com.henriquesebastiao.downtify.feature.player.LyricsSheet
 import com.henriquesebastiao.downtify.ui.common.CoverRow
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.common.PreviewData
@@ -67,6 +69,8 @@ data class SearchNavigation(
     val onArtist: (String) -> Unit = {},
     val onPlaylist: (String) -> Unit = {},
     val onSimilar: (artist: String, title: String) -> Unit = { _, _ -> },
+    /** Open a server link (a release from an artist page) as a search. */
+    val onOpenLink: (String) -> Unit = {},
 )
 
 @Composable
@@ -116,10 +120,17 @@ fun SearchRoute(
             onDownload = viewModel::download,
             onDownloadAlbum = viewModel::downloadAlbum,
             onDownloadLink = viewModel::downloadLink,
+            onPlayLink = viewModel::playLink,
+            onToggleLike = viewModel::toggleLike,
+            onShowLyrics = viewModel::showLyrics,
         ),
         snackbarHostState = snackbar,
         modifier = modifier,
     )
+    val lyrics by viewModel.lyricsFor.collectAsStateWithLifecycle()
+    lyrics?.let {
+        LyricsSheet(lyrics = it, positionMs = 0, onSeek = {}, onDismiss = viewModel::hideLyrics)
+    }
 }
 
 /** What the server's results can do. */
@@ -129,6 +140,9 @@ data class RemoteActions(
     val onDownload: (RemoteSong) -> Unit = {},
     val onDownloadAlbum: (RemoteAlbum) -> Unit = {},
     val onDownloadLink: (ResolvedLink) -> Unit = {},
+    val onPlayLink: (ResolvedLink) -> Unit = {},
+    val onToggleLike: (Track) -> Unit = {},
+    val onShowLyrics: (Track) -> Unit = {},
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -320,7 +334,7 @@ private fun LazyListScope.serverSection(
                 item(key = "server-nothing") { StatusLine(stringResource(R.string.search_server_nothing, query)) }
             }
             if (showSongs) remoteSongs(server.songs, state, navigation, remote)
-            if (showAlbums) remoteAlbums(server.albums, state, remote)
+            if (showAlbums) remoteAlbums(server.albums, state, navigation, remote)
         }
 
         is ServerResults.Link -> linkResults(server.link, state, navigation, remote)
@@ -338,10 +352,11 @@ private fun LazyListScope.linkResults(
             link = link,
             requested = link.tracks.isNotEmpty() && link.tracks.all { it.id in state.jobs },
             onDownload = { remote.onDownloadLink(link) },
+            onPlay = { remote.onPlayLink(link) },
         )
     }
     remoteSongs(link.tracks, state, navigation, remote)
-    remoteAlbums(link.albums, state, remote)
+    remoteAlbums(link.albums, state, navigation, remote)
 }
 
 @Composable
@@ -366,6 +381,7 @@ private fun LazyListScope.remoteSongs(
     remote: RemoteActions,
 ) {
     items(songs, key = { "remote:${it.id}" }) { song ->
+        val libraryTrack = state.library?.findSong(song)
         RemoteSongRow(
             song = song,
             job = state.jobs[song.id],
@@ -374,16 +390,26 @@ private fun LazyListScope.remoteSongs(
             onPlay = { remote.onPlay(song, songs) },
             onSimilar = { navigation.onSimilar(song.artist, song.title) },
             onDownload = { remote.onDownload(song) },
+            libraryTrack = libraryTrack,
+            isLiked = libraryTrack != null && libraryTrack.id in state.likedIds,
+            onToggleLike = remote.onToggleLike,
+            onShowLyrics = remote.onShowLyrics,
         )
     }
 }
 
-private fun LazyListScope.remoteAlbums(albums: List<RemoteAlbum>, state: SearchUiState, remote: RemoteActions) {
+private fun LazyListScope.remoteAlbums(
+    albums: List<RemoteAlbum>,
+    state: SearchUiState,
+    navigation: SearchNavigation,
+    remote: RemoteActions,
+) {
     items(albums, key = { "remote-album:${it.id}" }) { album ->
         RemoteAlbumRow(
             album = album,
             progress = state.requestedAlbums[album.id]?.let { ServerDownloadProgress.of(it, state.jobs) },
             onDownload = { remote.onDownloadAlbum(album) },
+            onOpen = { if (album.url.isNotBlank()) navigation.onOpenLink(album.url) },
         )
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
@@ -45,6 +46,7 @@ class SimilarScreenTest {
         onPlay: (RemoteSong, List<RemoteSong>) -> Unit = { _, _ -> },
         onDownload: (RemoteSong) -> Unit = {},
         onFind: () -> Unit = {},
+        onPivot: (RemoteSong) -> Unit = {},
     ) {
         compose.setContent {
             DowntifyTheme {
@@ -59,15 +61,37 @@ class SimilarScreenTest {
                     onBack = {},
                     onPlay = onPlay,
                     onDownload = onDownload,
+                    onPivot = onPivot,
                 )
             }
         }
     }
 
     @Test
-    fun emptyStateAsksForAnArtistAndATrack() {
+    fun emptyStateAsksForAnArtistOrATrack() {
         show(SimilarUiState(), artist = "", track = "")
-        compose.onNodeWithText("Name an artist and a track to hear what sounds like it.").assertIsDisplayed()
+        compose.onNodeWithText("Name an artist or a track to hear what sounds like it.").assertIsDisplayed()
+    }
+
+    @Test
+    fun searchActionFindsWithOnlyOneField() {
+        var found = false
+        compose.setContent {
+            DowntifyTheme {
+                SimilarScreen(
+                    state = SimilarUiState(),
+                    artist = "Cher",
+                    track = "",
+                    onArtistChange = {},
+                    onTrackChange = {},
+                    onFind = { found = true },
+                    onRetry = {},
+                    onBack = {},
+                )
+            }
+        }
+        compose.onNodeWithText("Cher").performImeAction()
+        assertEquals(true, found)
     }
 
     @Test
@@ -81,9 +105,25 @@ class SimilarScreenTest {
             onDownload = { downloaded = it },
         )
         compose.onNodeWithContentDescription("Play Strong Enough in full").performClick()
-        compose.onNodeWithContentDescription("Download Strong Enough to the server").performClick()
         assertEquals(strong, played)
+        compose.onNodeWithText("Strong Enough").performClick()
+        assertEquals(strong, played)
+        compose.onNodeWithContentDescription("More options for Strong Enough").performClick()
+        compose.onNodeWithText("Download Strong Enough to the server").performClick()
         assertEquals(strong, downloaded)
+    }
+
+    @Test
+    fun resultsOfferSimilarFromTheRowMenu() {
+        var pivoted: RemoteSong? = null
+        val strong = song("v1", "Strong Enough")
+        show(
+            SimilarUiState(songs = listOf(strong), searched = true),
+            onPivot = { pivoted = it },
+        )
+        compose.onNodeWithContentDescription("More options for Strong Enough").performClick()
+        compose.onNodeWithText("Tracks like Strong Enough").performClick()
+        assertEquals(strong, pivoted)
     }
 
     @Test
@@ -127,7 +167,7 @@ class SimilarScreenTest {
         }
         compose.onNodeWithText("Artist").performTextInput("Cher")
         assertEquals("Cher", typed.value)
-        compose.onNodeWithText("Find similar").performClick()
+        compose.onNodeWithText("Cher").performImeAction()
         assertEquals(true, found)
     }
 }

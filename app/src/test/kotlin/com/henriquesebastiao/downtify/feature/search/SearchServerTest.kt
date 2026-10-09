@@ -31,13 +31,17 @@ class SearchServerTest {
     private val album =
         RemoteAlbum("alb", "Harbor Nights", "Nora Vale", "", "2021", "https://music.youtube.com/browse/alb", "Album")
 
-    private fun show(state: SearchUiState, remote: RemoteActions = RemoteActions()) {
+    private fun show(
+        state: SearchUiState,
+        remote: RemoteActions = RemoteActions(),
+        navigation: SearchNavigation = SearchNavigation(),
+    ) {
         compose.setContent {
             DowntifyTheme {
                 SearchScreen(
                     query = state.query,
                     state = state,
-                    navigation = SearchNavigation(),
+                    navigation = navigation,
                     onQueryChange = {},
                     onFilterChange = {},
                     onPlaySong = {},
@@ -62,10 +66,29 @@ class SearchServerTest {
         compose.onNodeWithText("Not in your library yet").assertExists()
         compose.onNodeWithText("Spotify").assertExists()
         compose.onNodeWithContentDescription("Play Harbor Song in full").performClick()
-        compose.onNodeWithContentDescription("Download Harbor Song to the server").performClick()
         assertEquals(harbor, played?.first)
         assertEquals(listOf(harbor), played?.second)
+        compose.onNodeWithText("Harbor Song").performClick()
+        assertEquals(harbor, played?.first)
+        compose.onNodeWithContentDescription("More options for Harbor Song").performClick()
+        compose.onNodeWithText("Download Harbor Song to the server").performClick()
         assertEquals(harbor, downloaded)
+    }
+
+    @Test
+    fun serverResultsOfferSimilarFromTheRowMenu() {
+        var similar: Pair<String, String>? = null
+        val harbor = song("s1", "Harbor Song", CatalogSource.Spotify)
+        show(
+            SearchUiState(
+                query = "harbor",
+                server = ServerResults.Found(listOf(harbor), emptyList()),
+            ),
+            navigation = SearchNavigation(onSimilar = { artist, title -> similar = artist to title }),
+        )
+        compose.onNodeWithContentDescription("More options for Harbor Song").performClick()
+        compose.onNodeWithText("Tracks like Harbor Song").performClick()
+        assertEquals("Nora Vale" to "Harbor Song", similar)
     }
 
     @Test
@@ -113,6 +136,20 @@ class SearchServerTest {
         )
         compose.onNodeWithText("Download all 2 songs to the server").performClick()
         assertEquals(link, asked)
+    }
+
+    @Test
+    fun aServerAlbumOpensItsLink() {
+        var opened: String? = null
+        show(
+            SearchUiState(
+                query = "harbor",
+                server = ServerResults.Found(emptyList(), listOf(album)),
+            ),
+            navigation = SearchNavigation(onOpenLink = { opened = it }),
+        )
+        compose.onNodeWithText("Harbor Nights").performClick()
+        assertEquals("https://music.youtube.com/browse/alb", opened)
     }
 
     @Test

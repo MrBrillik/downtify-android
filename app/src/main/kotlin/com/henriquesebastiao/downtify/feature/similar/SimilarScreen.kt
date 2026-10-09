@@ -11,14 +11,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -45,6 +45,8 @@ import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.CatalogSource
 import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.StreamVideo
+import com.henriquesebastiao.downtify.core.model.Track
+import com.henriquesebastiao.downtify.feature.player.LyricsSheet
 import com.henriquesebastiao.downtify.feature.search.RemoteSongRow
 import com.henriquesebastiao.downtify.ui.common.LoadError
 
@@ -78,9 +80,15 @@ fun SimilarRoute(onBack: () -> Unit, modifier: Modifier = Modifier, viewModel: S
         onPivot = viewModel::pivot,
         onDownload = viewModel::download,
         onLoadMore = viewModel::loadMore,
+        onToggleLike = viewModel::toggleLike,
+        onShowLyrics = viewModel::showLyrics,
         snackbarHostState = snackbar,
         modifier = modifier,
     )
+    val lyrics by viewModel.lyricsFor.collectAsStateWithLifecycle()
+    lyrics?.let {
+        LyricsSheet(lyrics = it, positionMs = 0, onSeek = {}, onDismiss = viewModel::hideLyrics)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,6 +107,8 @@ fun SimilarScreen(
     onPivot: (RemoteSong) -> Unit = {},
     onDownload: (RemoteSong) -> Unit = {},
     onLoadMore: () -> Unit = {},
+    onToggleLike: (Track) -> Unit = {},
+    onShowLyrics: (Track) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     Scaffold(
@@ -121,30 +131,77 @@ fun SimilarScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Column(
-                Modifier.fillMaxWidth().padding(horizontal = Spacing.screen),
+                Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(Spacing.sm),
             ) {
-                OutlinedTextField(
-                    value = artist,
-                    onValueChange = onArtistChange,
-                    label = { Text(stringResource(R.string.similar_artist)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = track,
-                    onValueChange = onTrackChange,
-                    label = { Text(stringResource(R.string.similar_track)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Button(
-                    onClick = onFind,
-                    enabled = artist.isNotBlank() && track.isNotBlank() && !state.loading,
-                    modifier = Modifier.align(Alignment.End),
-                ) {
-                    Text(stringResource(R.string.similar_find))
-                }
+                SearchBar(
+                    inputField = {
+                        SearchBarDefaults.InputField(
+                            query = artist,
+                            onQueryChange = onArtistChange,
+                            onSearch = { onFind() },
+                            expanded = false,
+                            onExpandedChange = {},
+                            placeholder = { Text(stringResource(R.string.similar_artist)) },
+                            leadingIcon = {
+                                Icon(
+                                    painterResource(DowntifyIcons.Search),
+                                    contentDescription = null,
+                                )
+                            },
+                            trailingIcon = if (artist.isNotEmpty()) {
+                                {
+                                    IconButton(onClick = { onArtistChange("") }) {
+                                        Icon(
+                                            painterResource(DowntifyIcons.Close),
+                                            contentDescription = stringResource(R.string.search_clear),
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
+                        )
+                    },
+                    expanded = false,
+                    onExpandedChange = {},
+                    windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.screen),
+                ) {}
+                SearchBar(
+                    inputField = {
+                        SearchBarDefaults.InputField(
+                            query = track,
+                            onQueryChange = onTrackChange,
+                            onSearch = { onFind() },
+                            expanded = false,
+                            onExpandedChange = {},
+                            placeholder = { Text(stringResource(R.string.similar_track)) },
+                            leadingIcon = {
+                                Icon(
+                                    painterResource(DowntifyIcons.Search),
+                                    contentDescription = null,
+                                )
+                            },
+                            trailingIcon = if (track.isNotEmpty()) {
+                                {
+                                    IconButton(onClick = { onTrackChange("") }) {
+                                        Icon(
+                                            painterResource(DowntifyIcons.Close),
+                                            contentDescription = stringResource(R.string.search_clear),
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
+                        )
+                    },
+                    expanded = false,
+                    onExpandedChange = {},
+                    windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.screen),
+                ) {}
             }
             when {
                 state.loading && state.songs.isEmpty() -> Box(
@@ -179,6 +236,7 @@ fun SimilarScreen(
                     contentPadding = PaddingValues(bottom = Spacing.xl),
                 ) {
                     items(state.songs, key = { "similar:${it.id}" }) { song ->
+                        val libraryTrack = state.library?.findSong(song)
                         RemoteSongRow(
                             song = song,
                             job = state.jobs[song.id],
@@ -189,6 +247,10 @@ fun SimilarScreen(
                             onPlay = { onPlay(song, state.songs) },
                             onSimilar = { onPivot(song) },
                             onDownload = { onDownload(song) },
+                            libraryTrack = libraryTrack,
+                            isLiked = libraryTrack != null && libraryTrack.id in state.likedIds,
+                            onToggleLike = onToggleLike,
+                            onShowLyrics = onShowLyrics,
                         )
                     }
                     if (state.hasMore) {

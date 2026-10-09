@@ -1,5 +1,7 @@
 package com.henriquesebastiao.downtify.feature.player
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,6 +44,7 @@ import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 
 /** Sits above the navigation bar while something is loaded; tapping it opens Now Playing. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MiniPlayer(
     state: PlayerState,
@@ -94,6 +97,7 @@ fun MiniPlayer(
                             style = MaterialTheme.typography.titleSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.basicMarquee(),
                         )
                         Text(
                             track?.displayArtist ?: stream?.artist ?: episode?.showName.orEmpty(),
@@ -101,6 +105,7 @@ fun MiniPlayer(
                             color = colors.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.basicMarquee(),
                         )
                     }
                 }
@@ -139,7 +144,11 @@ fun MiniPlayer(
     }
 }
 
-/** Download the playing stream, or a spinner while the server works on it. */
+/**
+ * Download the playing stream, a spinner while the server works on it,
+ * and a plain (blocked, not clickable) check once it is on the server:
+ * tapping it must not queue the download again.
+ */
 @Composable
 private fun MiniStreamDownloadButton(job: ServerJob?, title: String, onDownload: () -> Unit) {
     val active = job?.status == ServerJobStatus.Queued || job?.status == ServerJobStatus.Downloading
@@ -150,6 +159,17 @@ private fun MiniStreamDownloadButton(job: ServerJob?, title: String, onDownload:
             contentAlignment = Alignment.Center,
         ) {
             CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+        }
+    } else if (job?.status == ServerJobStatus.Done) {
+        val label = stringResource(R.string.search_job_done)
+        Box(
+            Modifier.size(48.dp).semantics { contentDescription = label },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(DowntifyIcons.CheckCircle),
+                contentDescription = null,
+            )
         }
     } else {
         IconButton(onClick = onDownload) {

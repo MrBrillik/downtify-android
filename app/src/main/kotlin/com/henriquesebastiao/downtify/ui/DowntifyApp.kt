@@ -139,8 +139,19 @@ private fun MainShell() {
                     item(
                         selected = selected,
                         onClick = {
-                            currentTab = tab
-                            navController.navigateTopLevel(tab)
+                            if (selected) {
+                                // Re-tapping the open tab closes whatever was
+                                // opened above it (Discover, an album, a
+                                // search) and shows the tab's start view.
+                                // Falls back to a plain switch when the tab
+                                // has no entry in the stack.
+                                if (!navController.popBackStack(tab.route, inclusive = false)) {
+                                    navController.navigateTopLevel(tab)
+                                }
+                            } else {
+                                currentTab = tab
+                                navController.navigateTopLevel(tab)
+                            }
                         },
                         icon = {
                             Icon(
@@ -215,6 +226,7 @@ private fun AppNavHost(navController: NavHostController) {
                     onArtist = toArtist,
                     onPlaylist = toPlaylist,
                     onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
+                    onOpenLink = { navController.navigate(SearchQueryRoute(it)) },
                 ),
             )
         }
@@ -226,6 +238,7 @@ private fun AppNavHost(navController: NavHostController) {
                     onArtist = toArtist,
                     onPlaylist = toPlaylist,
                     onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
+                    onOpenLink = { navController.navigate(SearchQueryRoute(it)) },
                 ),
             )
         }
@@ -287,6 +300,7 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
     val state by player.state.collectAsStateWithLifecycle()
     val isLiked by player.isLiked.collectAsStateWithLifecycle()
     val streamJob by player.streamJob.collectAsStateWithLifecycle()
+    val streamTrack by player.streamTrack.collectAsStateWithLifecycle()
     val serverName by player.serverName.collectAsStateWithLifecycle()
     val lyrics by player.lyrics.collectAsStateWithLifecycle()
     var backProgress by remember { mutableFloatStateOf(0f) }
@@ -314,6 +328,7 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
             isLiked = isLiked,
             serverName = serverName,
             downloadJob = streamJob,
+            hasLibraryCopy = streamTrack != null,
             actions = NowPlayingActions(
                 onCollapse = onClose,
                 onTogglePlay = player::togglePlayPause,

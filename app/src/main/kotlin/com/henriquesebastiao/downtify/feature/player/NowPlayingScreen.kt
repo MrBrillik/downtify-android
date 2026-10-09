@@ -1,6 +1,8 @@
 package com.henriquesebastiao.downtify.feature.player
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,6 +101,11 @@ data class NowPlayingActions(
     val onDownloadStream: () -> Unit = {},
 )
 
+/**
+ * [hasLibraryCopy] is true when the playing stream has since been
+ * downloaded: the stream keeps playing, but the buttons switch to the
+ * library set (like, lyrics) and the download button goes away.
+ */
 @Composable
 fun NowPlayingScreen(
     state: PlayerState,
@@ -107,6 +114,7 @@ fun NowPlayingScreen(
     actions: NowPlayingActions,
     modifier: Modifier = Modifier,
     downloadJob: ServerJob? = null,
+    hasLibraryCopy: Boolean = false,
 ) {
     val track = state.track
     val episode = state.episode
@@ -148,7 +156,7 @@ fun NowPlayingScreen(
                 TitleRow(
                     title = track?.displayTitle ?: stream?.title ?: episode?.title.orEmpty(),
                     artist = track?.displayArtist ?: stream?.artist ?: episode?.showName.orEmpty(),
-                    isLiked = isLiked.takeIf { episode == null && stream == null },
+                    isLiked = isLiked.takeIf { episode == null && (stream == null || hasLibraryCopy) },
                     colors = colors,
                     onArtist = {
                         if (episode !=
@@ -217,14 +225,14 @@ fun NowPlayingScreen(
                             )
                         }
                     }
-                    if (stream != null) {
+                    if (stream != null && !hasLibraryCopy) {
                         StreamDownloadButton(
                             job = downloadJob,
                             title = stream.title,
                             onDownload = actions.onDownloadStream,
                         )
                     }
-                    if (episode == null && stream == null) {
+                    if (episode == null && (stream == null || hasLibraryCopy)) {
                         IconButton(onClick = actions.onOpenLyrics) {
                             Icon(
                                 painterResource(DowntifyIcons.Lyrics),
@@ -338,6 +346,7 @@ private fun Header(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TitleRow(
     title: String,
@@ -352,14 +361,20 @@ private fun TitleRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                title,
+                style = MaterialTheme.typography.headlineSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee(),
+            )
             Text(
                 artist,
                 style = MaterialTheme.typography.bodyLarge,
                 color = colors.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable(onClick = onArtist),
+                modifier = Modifier.clickable(onClick = onArtist).basicMarquee(),
             )
         }
         // Nothing to like on an episode.

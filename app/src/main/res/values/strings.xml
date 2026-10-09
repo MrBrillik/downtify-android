@@ -146,6 +146,7 @@
         <item quantity="one">Download %1$d song to the server</item>
         <item quantity="other">Download all %1$d songs to the server</item>
     </plurals>
+    <string name="search_link_play_all">Play all in full</string>
     <string name="search_source_spotify">Spotify</string>
     <string name="search_source_youtube">YT Music</string>
     <string name="search_source_soulseek">Soulseek</string>
@@ -167,7 +168,7 @@
     <string name="similar_artist">Artist</string>
     <string name="similar_track">Track</string>
     <string name="similar_find">Find similar</string>
-    <string name="similar_empty">Name an artist and a track to hear what sounds like it.</string>
+    <string name="similar_empty">Name an artist or a track to hear what sounds like it.</string>
     <string name="similar_failed">Couldn\'t find similar tracks</string>
     <string name="similar_unreachable">The server can\'t be reached</string>
     <string name="similar_no_results">Nothing similar found</string>
@@ -197,6 +198,7 @@
     <string name="discover_because">Because you like %1$s</string>
     <string name="discover_show_all">Show all %1$d</string>
     <string name="discover_artist_options">Options for %1$s</string>
+    <string name="discover_preview">Preview %1$s</string>
     <string name="discover_not_interested">Not interested</string>
     <string name="discover_hidden">%1$s won\'t be suggested again</string>
     <string name="discover_undo">Undo</string>

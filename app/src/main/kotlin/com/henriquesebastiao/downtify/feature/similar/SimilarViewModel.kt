@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.henriquesebastiao.downtify.core.data.ServerResult
 import com.henriquesebastiao.downtify.core.data.catalog.CatalogRepository
 import com.henriquesebastiao.downtify.core.data.catalog.ServerQueueRepository
+import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
+import com.henriquesebastiao.downtify.core.data.library.LibrarySnapshot
 import com.henriquesebastiao.downtify.core.data.similar.SimilarRepository
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
@@ -16,11 +18,13 @@ import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ServerJob
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.model.StreamVideo
+import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.player.NowPlayingRef
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.core.player.PlayingStream
 import com.henriquesebastiao.downtify.core.player.RemotePlayback
 import com.henriquesebastiao.downtify.core.player.StreamEntry
+import com.henriquesebastiao.downtify.feature.player.LyricsState
 import com.henriquesebastiao.downtify.ui.common.LoadError
 import com.henriquesebastiao.downtify.ui.common.loadError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,6 +57,10 @@ data class SimilarUiState(
     val loadingMore: Boolean = false,
     /** False once a page adds nothing new: the radio ran dry. */
     val hasMore: Boolean = true,
+    /** The synced library, for matching downloaded songs back to tracks. */
+    val library: LibrarySnapshot? = null,
+    /** Liked library track ids. */
+    val likedIds: Set<String> = emptySet(),
 )
 
 /** One-off messages for the snackbar. */
@@ -72,6 +80,7 @@ class SimilarViewModel @Inject constructor(
     queue: ServerQueueRepository,
     private val player: PlayerController,
     private val remotePlayback: RemotePlayback,
+    private val library: LibraryRepository,
 ) : ViewModel() {
     /** The form keeps synchronous state so typing stays instant. */
     var artist by mutableStateOf(savedState[KEY_ARTIST] ?: "")
@@ -103,6 +112,7 @@ class SimilarViewModel @Inject constructor(
 
     val uiState: StateFlow<SimilarUiState> = combine(
         combine(songs, loading, searched, error, ::Basics),
+        combine(library.library, library.likedIds) { snapshot, liked -> snapshot to liked.toSet() },
         combine(loadingMore, hasMore, ::More),
         combine(player.nowPlaying, remotePlayback.resolvingId, queue.jobs) {
                 playing: NowPlayingRef,
@@ -111,7 +121,7 @@ class SimilarViewModel @Inject constructor(
             ->
             Playing(playing.streamVideoId, resolvingId, jobs)
         },
-    ) { basics: Basics, more: More, playing: Playing ->
+    ) { basics: Basics, library: Pair<LibrarySnapshot?, Set<String>>, more: More, playing: Playing ->
         SimilarUiState(
             basics.songs,
             basics.loading,
@@ -122,6 +132,8 @@ class SimilarViewModel @Inject constructor(
             playing.jobs,
             more.loadingMore,
             more.hasMore,
+            library.first,
+            library.second,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SimilarUiState())
 
@@ -130,7 +142,7 @@ class SimilarViewModel @Inject constructor(
     private var extending = false
 
     init {
-        if (artist.isNotBlank() && track.isNotBlank()) search()
+        if (artist.isNotBlank() || track.isNotBlank()) search()
         viewModelScope.launch { followRouteArgs() }
         viewModelScope.launch {
             player.state
@@ -149,7 +161,7 @@ class SimilarViewModel @Inject constructor(
             .combine(savedState.getStateFlow(KEY_TRACK, track)) { a, t -> a to t }
             .distinctUntilChanged()
             .collect { (a, t) ->
-                if (a.isBlank() || t.isBlank()) return@collect
+                if (a.isBlank() && t.isBlank()) return@collect
                 if (a == artist && t == track) return@collect
                 artist = a
                 track = t
@@ -220,7 +232,7 @@ class SimilarViewModel @Inject constructor(
 
     fun search() {
         searching?.cancel()
-        if (artist.isBlank() || track.isBlank()) return
+        if (artist.isBlank() && track.isBlank()) return
         searching = viewModelScope.launch {
             loading.value = true
             error.value = null
@@ -307,6 +319,23 @@ class SimilarViewModel @Inject constructor(
             }
             messageChannel.send(message)
         }
+    }
+
+    fun toggleLike(track: Track) {
+        viewModelScope.launch { library.setLiked(track.id, track.id !in uiState.value.likedIds) }
+    }
+
+    private val lyricsSheet = MutableStateFlow<LyricsState?>(null)
+    val lyricsFor: StateFlow<LyricsState?> = lyricsSheet
+
+    /** Lyrics of a downloaded song, shown in place instead of its download button. */
+    fun showLyrics(track: Track) {
+        lyricsSheet.value = LyricsState.Loading
+        viewModelScope.launch { lyricsSheet.value = LyricsState.Loaded(track.id, library.lyrics(track.id)) }
+    }
+
+    fun hideLyrics() {
+        lyricsSheet.value = null
     }
 
     private companion object {

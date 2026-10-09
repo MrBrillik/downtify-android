@@ -10,6 +10,7 @@ import com.henriquesebastiao.downtify.core.model.Lyrics
 import com.henriquesebastiao.downtify.core.model.PlaybackSpeeds
 import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ServerJob
+import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.CatalogJson
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.core.player.PlayerState
@@ -44,9 +45,21 @@ class PlayerViewModel @Inject constructor(
 ) : ViewModel() {
     val state: StateFlow<PlayerState> = player.state
 
-    val isLiked: StateFlow<Boolean> = combine(player.state, library.likedIds) { s, liked ->
-        s.track?.id?.let { it in liked } == true
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
+    /**
+     * The library track behind the playing stream, once it has been
+     * downloaded: matched by title and artist, so the player can offer
+     * the library actions (like, lyrics) without switching playback.
+     */
+    val streamTrack: StateFlow<Track?> =
+        combine(player.state, library.library) { s, snapshot ->
+            val stream = s.stream ?: return@combine null
+            snapshot?.findTrack(stream.title, stream.artist)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
+
+    val isLiked: StateFlow<Boolean> =
+        combine(player.state, library.likedIds, streamTrack) { s, liked, downloaded ->
+            (s.track?.id ?: downloaded?.id)?.let { it in liked } == true
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
 
     val serverName: StateFlow<String> = server.session.map { it?.serverName.orEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), "")
@@ -77,7 +90,7 @@ class PlayerViewModel @Inject constructor(
     fun dismissError() = player.dismissError()
 
     fun toggleLike() {
-        val id = state.value.track?.id ?: return
+        val id = state.value.track?.id ?: streamTrack.value?.id ?: return
         val liked = isLiked.value
         viewModelScope.launch { library.setLiked(id, !liked) }
     }
@@ -99,7 +112,7 @@ class PlayerViewModel @Inject constructor(
 
     /** Loads the lyrics of the current track (cached by the repository). */
     fun loadLyrics() {
-        val id = state.value.track?.id ?: return
+        val id = state.value.track?.id ?: streamTrack.value?.id ?: return
         val current = lyricsState.value
         if (current is LyricsState.Loaded && current.trackId == id) return
         lyricsState.value = LyricsState.Loading

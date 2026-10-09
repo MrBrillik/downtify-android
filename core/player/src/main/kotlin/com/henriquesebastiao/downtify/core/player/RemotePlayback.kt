@@ -34,10 +34,13 @@ class RemotePlayback @Inject constructor(
     /**
      * Plays [song] out of [songs] from [startIndex]. Returns false when
      * nothing resolves (the caller says so); pausing a playing stream is
-     * the caller's job — it knows what's on screen.
+     * the caller's job — it knows what's on screen. Songs past
+     * [MAX_STREAM_SECONDS] never start: the server refuses to stream
+     * them, so resolving would only burn a download.
      */
     suspend fun play(songs: List<RemoteSong>, startIndex: Int, from: PlaybackContext): Boolean {
         val song = songs.getOrNull(startIndex) ?: return false
+        if (song.durationSeconds > MAX_STREAM_SECONDS) return false
         mutableResolving.value = song.id
         val videoId = catalog.streamVideoId(song)
         mutableResolving.value = null
@@ -49,8 +52,14 @@ class RemotePlayback @Inject constructor(
 
     private suspend fun appendRest(songs: List<RemoteSong>, startIndex: Int) {
         val entries = songs.subList(startIndex + 1, songs.size).mapNotNull { song ->
+            if (song.durationSeconds > MAX_STREAM_SECONDS) return@mapNotNull null
             catalog.streamVideoId(song)?.let { StreamEntry(song, it) }
         }
         player.appendStreams(entries)
+    }
+
+    private companion object {
+        /** Mirrors the server's download/stream cap (10 minutes, in seconds). */
+        const val MAX_STREAM_SECONDS = 600
     }
 }

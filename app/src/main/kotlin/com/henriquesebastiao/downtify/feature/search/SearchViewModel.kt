@@ -23,6 +23,7 @@ import com.henriquesebastiao.downtify.core.model.TextSearch
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.core.player.RemotePlayback
+import com.henriquesebastiao.downtify.feature.player.LyricsState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -85,6 +86,10 @@ data class SearchUiState(
     val playingStreamId: String? = null,
     /** A stream whose server address is being resolved. */
     val resolvingStreamId: String? = null,
+    /** The synced library, for matching downloaded songs back to tracks. */
+    val library: LibrarySnapshot? = null,
+    /** Liked library track ids. */
+    val likedIds: Set<String> = emptySet(),
 )
 
 /** One-off messages for the snackbar. */
@@ -104,7 +109,7 @@ sealed interface SearchMessage {
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val savedState: SavedStateHandle,
-    library: LibraryRepository,
+    private val library: LibraryRepository,
     private val player: PlayerController,
     private val catalog: CatalogRepository,
     queue: ServerQueueRepository,
@@ -128,8 +133,8 @@ class SearchViewModel @Inject constructor(
         filter,
         library.library,
         library.playlists,
-        player.nowPlaying,
-    ) { q, f, snapshot, playlists, playing ->
+        combine(library.likedIds, player.nowPlaying) { liked, playing -> liked to playing },
+    ) { q, f, snapshot, playlists, (liked, playing) ->
         val selected = SearchFilter.entries.firstOrNull { it.name == f } ?: SearchFilter.All
         val isLink = CatalogLinks.isLink(q)
         SearchUiState(
@@ -143,6 +148,8 @@ class SearchViewModel @Inject constructor(
             currentTrackId = playing.trackId,
             isPlaying = playing.isPlaying,
             isLink = isLink,
+            library = snapshot,
+            likedIds = liked.toSet(),
         )
     }.flowOn(Dispatchers.Default)
 
@@ -216,6 +223,33 @@ class SearchViewModel @Inject constructor(
     /** Everything a pasted link points at; a playlist stays a playlist on the server. */
     fun downloadLink(link: ResolvedLink) = request(link.name, link.tracks.size) {
         catalog.download(link.tracks, playlistUrl = link.url.takeIf(CatalogLinks::isPlaylist))
+    }
+
+    fun toggleLike(track: Track) {
+        viewModelScope.launch { library.setLiked(track.id, track.id !in uiState.value.likedIds) }
+    }
+
+    private val lyricsSheet = MutableStateFlow<LyricsState?>(null)
+    val lyricsFor: StateFlow<LyricsState?> = lyricsSheet
+
+    /** Lyrics of a downloaded song, shown in place instead of its download button. */
+    fun showLyrics(track: Track) {
+        lyricsSheet.value = LyricsState.Loading
+        viewModelScope.launch { lyricsSheet.value = LyricsState.Loaded(track.id, library.lyrics(track.id)) }
+    }
+
+    fun hideLyrics() {
+        lyricsSheet.value = null
+    }
+
+    /** Everything a pasted link points at, in full first: listen before downloading. */
+    fun playLink(link: ResolvedLink) {
+        val tracks = link.tracks
+        if (tracks.isEmpty()) return
+        viewModelScope.launch {
+            val played = remotePlayback.play(tracks, 0, PlaybackContext(PlaybackContextType.Songs, "", ""))
+            if (!played) messageChannel.send(SearchMessage.NoStream)
+        }
     }
 
     private fun request(title: String, count: Int, block: suspend () -> ServerResult<Unit>) {

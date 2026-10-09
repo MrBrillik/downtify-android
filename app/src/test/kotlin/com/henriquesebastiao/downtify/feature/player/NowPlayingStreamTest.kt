@@ -59,6 +59,31 @@ class NowPlayingStreamTest {
     }
 
     @Test
+    fun aDownloadedStreamShowsLibraryActionsInsteadOfDownload() {
+        var liked = 0
+        var lyrics = 0
+        compose.setContent {
+            DowntifyTheme {
+                NowPlayingScreen(
+                    state = state,
+                    isLiked = false,
+                    serverName = "nas",
+                    actions = NowPlayingActions(
+                        onToggleLike = { liked++ },
+                        onOpenLyrics = { lyrics++ },
+                    ),
+                    hasLibraryCopy = true,
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Download Believe to the server").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Add to Liked songs").performClick()
+        compose.onNodeWithContentDescription("Lyrics").performClick()
+        assertEquals(1, liked)
+        assertEquals(1, lyrics)
+    }
+
+    @Test
     fun similarOpensTracksLikeThePlayingOne() {
         var similar: Pair<String, String>? = null
         compose.setContent {
