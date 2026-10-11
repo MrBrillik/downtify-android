@@ -43,7 +43,13 @@ import com.henriquesebastiao.downtify.core.player.PlayerState
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 
-/** Sits above the navigation bar while something is loaded; tapping it opens Now Playing. */
+/**
+ * Sits above the navigation bar while something is loaded; tapping it opens Now Playing.
+ *
+ * [hasLibraryCopy] is true when the playing stream has since been downloaded: the stream keeps
+ * playing, but the download button goes away so the mini player looks exactly like a library
+ * track's (no download, no spinner, no check).
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MiniPlayer(
@@ -54,6 +60,7 @@ fun MiniPlayer(
     onSimilar: (artist: String, title: String) -> Unit = { _, _ -> },
     downloadJob: ServerJob? = null,
     onDownloadStream: () -> Unit = {},
+    hasLibraryCopy: Boolean = false,
 ) {
     val track = state.track
     val episode = state.episode
@@ -117,7 +124,7 @@ fun MiniPlayer(
                         )
                     }
                 }
-                if (stream != null) {
+                if (stream != null && !hasLibraryCopy && downloadJob?.status != ServerJobStatus.Done) {
                     MiniStreamDownloadButton(job = downloadJob, title = stream.title, onDownload = onDownloadStream)
                 }
                 IconButton(onClick = onTogglePlay) {
@@ -145,9 +152,9 @@ fun MiniPlayer(
 }
 
 /**
- * Download the playing stream, a spinner while the server works on it,
- * and a plain (blocked, not clickable) check once it is on the server:
- * tapping it must not queue the download again.
+ * Download the playing stream, a spinner while the server works on it.
+ * Once the server finished ([ServerJobStatus.Done]) there is nothing to show: the mini player
+ * looks exactly like a library track's. Never called in that case (see the caller).
  */
 @Composable
 private fun MiniStreamDownloadButton(job: ServerJob?, title: String, onDownload: () -> Unit) {
@@ -160,18 +167,7 @@ private fun MiniStreamDownloadButton(job: ServerJob?, title: String, onDownload:
         ) {
             CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
         }
-    } else if (job?.status == ServerJobStatus.Done) {
-        val label = stringResource(R.string.search_job_done)
-        Box(
-            Modifier.size(48.dp).semantics { contentDescription = label },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painterResource(DowntifyIcons.CheckCircle),
-                contentDescription = null,
-            )
-        }
-    } else {
+    } else if (job?.status != ServerJobStatus.Done) {
         IconButton(onClick = onDownload) {
             Icon(
                 painterResource(DowntifyIcons.Downloads),

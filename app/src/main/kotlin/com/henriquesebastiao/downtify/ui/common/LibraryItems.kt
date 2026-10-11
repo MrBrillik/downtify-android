@@ -166,6 +166,7 @@ data class TrackActions(
     val onToggleLike: ((Track) -> Unit)? = null,
     val onGoToAlbum: ((Track) -> Unit)? = null,
     val onGoToArtist: ((Track) -> Unit)? = null,
+    val onFindSimilar: ((artist: String, title: String) -> Unit)? = null,
 )
 
 /**
@@ -293,6 +294,18 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions) {
                         onClick = {
                             open = false
                             go(track)
+                        },
+                    )
+                }
+            }
+            if (track.displayArtist.isNotBlank() && track.displayTitle.isNotBlank()) {
+                actions.onFindSimilar?.let { find ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.similar_find)) },
+                        leadingIcon = { Icon(painterResource(DowntifyIcons.Explore), contentDescription = null) },
+                        onClick = {
+                            open = false
+                            find(track.displayArtist, track.displayTitle)
                         },
                     )
                 }

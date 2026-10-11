@@ -382,16 +382,18 @@ private fun LazyListScope.remoteSongs(
 ) {
     items(songs, key = { "remote:${it.id}" }) { song ->
         val libraryTrack = state.library?.findSong(song)
+        val playing = state.playingStreamId?.let { StreamVideo.videoIdOf(song) == it } == true
         RemoteSongRow(
             song = song,
             job = state.jobs[song.id],
-            playing = state.playingStreamId?.let { StreamVideo.videoIdOf(song) == it } == true,
+            playing = playing,
             resolving = state.resolvingStreamId == song.id,
             onPlay = { remote.onPlay(song, songs) },
             onSimilar = { navigation.onSimilar(song.artist, song.title) },
             onDownload = { remote.onDownload(song) },
             libraryTrack = libraryTrack,
             isLiked = libraryTrack != null && libraryTrack.id in state.likedIds,
+            isPlaying = playing && state.isPlaying,
             onToggleLike = remote.onToggleLike,
             onShowLyrics = remote.onShowLyrics,
         )

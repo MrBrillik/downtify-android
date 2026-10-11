@@ -102,6 +102,7 @@ object CatalogJson {
             status = ServerJobStatus.of(obj.string("status")),
             progress = (obj.number("progress") ?: 0.0).toFloat().coerceIn(0f, PERCENT),
             message = obj.string("message"),
+            position = obj.number("position")?.toInt()?.takeIf { it > 0 },
         )
     }
 

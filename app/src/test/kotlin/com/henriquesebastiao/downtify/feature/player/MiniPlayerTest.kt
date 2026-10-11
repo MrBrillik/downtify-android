@@ -1,6 +1,5 @@
 package com.henriquesebastiao.downtify.feature.player
 
-import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -76,7 +75,7 @@ class MiniPlayerTest {
     }
 
     @Test
-    fun aDownloadedStreamShowsACheck() {
+    fun aDownloadedStreamLooksLikeALibraryTrack() {
         compose.setContent {
             DowntifyTheme {
                 MiniPlayer(
@@ -91,12 +90,14 @@ class MiniPlayerTest {
                 )
             }
         }
-        compose.onNodeWithContentDescription("Downloaded to the server").assertExists()
+        // Same as a library track: no download button, no spinner, no check.
         compose.onNodeWithContentDescription("Download Believe to the server").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Downloaded to the server").assertDoesNotExist()
+        compose.onNodeWithText("Believe").assertExists()
     }
 
     @Test
-    fun aDownloadedStreamCheckCannotBeTapped() {
+    fun aStreamWithALibraryCopyHidesTheDownloadButton() {
         var downloaded = 0
         compose.setContent {
             DowntifyTheme {
@@ -107,12 +108,14 @@ class MiniPlayerTest {
                     ),
                     onOpen = {},
                     onTogglePlay = {},
-                    downloadJob = ServerJob("dQw4w9WgXcQ", "Believe", "Cher", "", "", ServerJobStatus.Done, 100f, ""),
+                    downloadJob = null,
                     onDownloadStream = { downloaded++ },
+                    hasLibraryCopy = true,
                 )
             }
         }
-        compose.onNodeWithContentDescription("Downloaded to the server").assertHasNoClickAction()
+        compose.onNodeWithContentDescription("Download Believe to the server").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Downloaded to the server").assertDoesNotExist()
         assertEquals(0, downloaded)
     }
 }

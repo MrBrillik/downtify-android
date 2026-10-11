@@ -114,6 +114,23 @@ class SimilarScreenTest {
     }
 
     @Test
+    fun aPlayingRowKeepsItsCoverAction() {
+        var played: RemoteSong? = null
+        val strong = song("dQw4w9WgXcQ", "Strong Enough")
+        show(
+            SimilarUiState(
+                songs = listOf(strong),
+                searched = true,
+                playingStreamId = "dQw4w9WgXcQ",
+                isPlaying = true,
+            ),
+            onPlay = { song, _ -> played = song },
+        )
+        compose.onNodeWithContentDescription("Stop Strong Enough").performClick()
+        assertEquals(strong, played)
+    }
+
+    @Test
     fun resultsOfferSimilarFromTheRowMenu() {
         var pivoted: RemoteSong? = null
         val strong = song("v1", "Strong Enough")

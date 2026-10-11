@@ -179,6 +179,7 @@ private fun MainShell() {
                         onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
                         downloadJob = player.streamJob.collectAsStateWithLifecycle().value,
                         onDownloadStream = player::downloadStream,
+                        hasLibraryCopy = player.streamTrack.collectAsStateWithLifecycle().value != null,
                     )
                 }
             }
@@ -266,6 +267,7 @@ private fun AppNavHost(navController: NavHostController) {
                     onArtist = toArtist,
                     onPlaylist = toPlaylist,
                     onLiked = { navController.navigate(LikedRoute) },
+                    onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
                 ),
             )
         }
@@ -329,6 +331,7 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
             serverName = serverName,
             downloadJob = streamJob,
             hasLibraryCopy = streamTrack != null,
+            libraryTrack = streamTrack,
             actions = NowPlayingActions(
                 onCollapse = onClose,
                 onTogglePlay = player::togglePlayPause,
@@ -366,7 +369,7 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
 
     when (sheet) {
         SHEET_LYRICS -> {
-            LaunchedEffect(state.track?.id) { player.loadLyrics() }
+            LaunchedEffect(state.track?.id, streamTrack?.id) { player.loadLyrics() }
             LyricsSheet(lyrics = lyrics, positionMs = state.positionMs, onSeek = player::seekTo, onDismiss = {
                 sheet =
                     null

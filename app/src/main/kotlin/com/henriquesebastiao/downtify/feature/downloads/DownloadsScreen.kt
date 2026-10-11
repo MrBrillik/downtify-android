@@ -280,16 +280,28 @@ private fun ServerJobRow(job: ServerJob) {
         leadingContent = {
             CoverArt(url = job.coverUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.size(56.dp))
         },
-        trailingContent = if (job.status == ServerJobStatus.Done) {
-            {
-                Icon(
-                    painterResource(DowntifyIcons.CheckCircle),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
+        trailingContent = when {
+            job.status == ServerJobStatus.Done -> {
+                {
+                    Icon(
+                        painterResource(DowntifyIcons.CheckCircle),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
-        } else {
-            null
+
+            job.status.isActive && job.position != null -> {
+                {
+                    Text(
+                        "#${job.position}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            else -> null
         },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
     )

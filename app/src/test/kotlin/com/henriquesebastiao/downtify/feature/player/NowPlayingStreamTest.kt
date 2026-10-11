@@ -84,6 +84,64 @@ class NowPlayingStreamTest {
     }
 
     @Test
+    fun aFinishedJobHidesTheDownloadUntilTheLibrarySync() {
+        compose.setContent {
+            DowntifyTheme {
+                NowPlayingScreen(
+                    state = state,
+                    isLiked = false,
+                    serverName = "nas",
+                    actions = NowPlayingActions(),
+                    downloadJob = com.henriquesebastiao.downtify.core.model.ServerJob(
+                        "dQw4w9WgXcQ",
+                        "Believe",
+                        "Cher",
+                        "",
+                        "",
+                        com.henriquesebastiao.downtify.core.model.ServerJobStatus.Done,
+                        100f,
+                        "",
+                    ),
+                    hasLibraryCopy = false,
+                )
+            }
+        }
+        // Nothing to like, no lyrics, no menu yet: there is no library id behind them.
+        compose.onNodeWithContentDescription("Download Believe to the server").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Add to Liked songs").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Lyrics").assertDoesNotExist()
+        compose.onNodeWithContentDescription("More options").assertDoesNotExist()
+    }
+
+    @Test
+    fun aStreamWithALibraryCopyOpensItsAlbumAndArtist() {
+        val copy = com.henriquesebastiao.downtify.ui.common.PreviewData.tracks[0]
+        var album: String? = null
+        var artist: String? = null
+        compose.setContent {
+            DowntifyTheme {
+                NowPlayingScreen(
+                    state = state,
+                    isLiked = false,
+                    serverName = "nas",
+                    actions = NowPlayingActions(
+                        onGoToAlbum = { album = it },
+                        onGoToArtist = { artist = it },
+                    ),
+                    hasLibraryCopy = true,
+                    libraryTrack = copy,
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Go to album").performClick()
+        assertEquals(copy.albumId, album)
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Go to artist").performClick()
+        assertEquals(copy.artistId, artist)
+    }
+
+    @Test
     fun similarOpensTracksLikeThePlayingOne() {
         var similar: Pair<String, String>? = null
         compose.setContent {

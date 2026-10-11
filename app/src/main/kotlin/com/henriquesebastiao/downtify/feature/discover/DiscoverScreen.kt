@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -46,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.designsystem.component.EmptyState
+import com.henriquesebastiao.downtify.core.designsystem.component.PlayingBars
 import com.henriquesebastiao.downtify.core.designsystem.component.SectionHeader
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
@@ -224,6 +226,8 @@ private fun Content(
                     onOpen = { onOpen(DiscoverInput.searchFor(artist)) },
                     onHide = { onHide(artist) },
                     onPreview = { onPreview(artist) },
+                    previewing = state.previewingArtist == artist.name,
+                    previewPlaying = state.previewPlaying,
                 )
             }
             if (!state.showAll && state.artists.size > DiscoverUiState.TOP_ARTISTS) {
@@ -266,7 +270,14 @@ private fun androidx.compose.foundation.lazy.LazyListScope.collections(
 }
 
 @Composable
-private fun ArtistRow(artist: DiscoverArtist, onOpen: () -> Unit, onHide: () -> Unit, onPreview: () -> Unit) {
+private fun ArtistRow(
+    artist: DiscoverArtist,
+    onOpen: () -> Unit,
+    onHide: () -> Unit,
+    onPreview: () -> Unit,
+    previewing: Boolean = false,
+    previewPlaying: Boolean = false,
+) {
     CoverRow(
         title = artist.name,
         subtitle = artist.because.takeIf { it.isNotEmpty() }
@@ -279,12 +290,18 @@ private fun ArtistRow(artist: DiscoverArtist, onOpen: () -> Unit, onHide: () -> 
         subtitleLines = 2,
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPreview) {
-                    Icon(
-                        painterResource(DowntifyIcons.Play),
-                        contentDescription = stringResource(R.string.discover_preview, artist.name),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
+                if (previewing) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
+                        PlayingBars(animate = previewPlaying)
+                    }
+                } else {
+                    IconButton(onClick = onPreview) {
+                        Icon(
+                            painterResource(DowntifyIcons.Play),
+                            contentDescription = stringResource(R.string.discover_preview, artist.name),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
                 var open by remember { mutableStateOf(false) }
                 Box {

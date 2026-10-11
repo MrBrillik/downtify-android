@@ -61,6 +61,8 @@ data class SimilarUiState(
     val library: LibrarySnapshot? = null,
     /** Liked library track ids. */
     val likedIds: Set<String> = emptySet(),
+    /** Anything is playing right now (the playing row's bars bounce only then). */
+    val isPlaying: Boolean = false,
 )
 
 /** One-off messages for the snackbar. */
@@ -108,7 +110,12 @@ class SimilarViewModel @Inject constructor(
 
     private data class More(val loadingMore: Boolean, val hasMore: Boolean)
 
-    private data class Playing(val videoId: String?, val resolvingId: String?, val jobs: Map<String, ServerJob>)
+    private data class Playing(
+        val videoId: String?,
+        val resolvingId: String?,
+        val jobs: Map<String, ServerJob>,
+        val isPlaying: Boolean,
+    )
 
     val uiState: StateFlow<SimilarUiState> = combine(
         combine(songs, loading, searched, error, ::Basics),
@@ -119,7 +126,7 @@ class SimilarViewModel @Inject constructor(
                 resolvingId: String?,
                 jobs: Map<String, ServerJob>,
             ->
-            Playing(playing.streamVideoId, resolvingId, jobs)
+            Playing(playing.streamVideoId, resolvingId, jobs, playing.isPlaying)
         },
     ) { basics: Basics, library: Pair<LibrarySnapshot?, Set<String>>, more: More, playing: Playing ->
         SimilarUiState(
@@ -134,6 +141,7 @@ class SimilarViewModel @Inject constructor(
             more.hasMore,
             library.first,
             library.second,
+            playing.isPlaying,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SimilarUiState())
 

@@ -118,6 +118,38 @@ class SearchServerTest {
     }
 
     @Test
+    fun aDownloadedSongOffersLikeAndLyricsInsteadOfDownload() {
+        val downloaded = com.henriquesebastiao.downtify.ui.common.PreviewData.tracks[7]
+        var liked: com.henriquesebastiao.downtify.core.model.Track? = null
+        var lyrics: com.henriquesebastiao.downtify.core.model.Track? = null
+        val harbor = song("s1", "Harbor Song", CatalogSource.Spotify)
+        compose.setContent {
+            DowntifyTheme {
+                RemoteSongRow(
+                    song = harbor,
+                    job = null,
+                    playing = false,
+                    resolving = false,
+                    onPlay = {},
+                    onSimilar = {},
+                    onDownload = {},
+                    libraryTrack = downloaded,
+                    isLiked = false,
+                    onToggleLike = { liked = it },
+                    onShowLyrics = { lyrics = it },
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("More options for Harbor Song").performClick()
+        compose.onNodeWithText("Download Harbor Song to the server").assertDoesNotExist()
+        compose.onNodeWithText("Add to Liked songs").performClick()
+        org.junit.Assert.assertEquals(downloaded, liked)
+        compose.onNodeWithContentDescription("More options for Harbor Song").performClick()
+        compose.onNodeWithText("Lyrics").performClick()
+        org.junit.Assert.assertEquals(downloaded, lyrics)
+    }
+
+    @Test
     fun aPastedLinkOffersToDownloadAllOfIt() {
         var asked: ResolvedLink? = null
         val link = ResolvedLink(

@@ -70,6 +70,7 @@ data class LibraryNavigation(
     val onArtist: (String) -> Unit = {},
     val onPlaylist: (String) -> Unit = {},
     val onLiked: () -> Unit = {},
+    val onSimilar: (artist: String, title: String) -> Unit = { _, _ -> },
 )
 
 @Composable
@@ -85,12 +86,14 @@ fun LibraryRoute(
         onSelectTab = viewModel::selectTab,
         onSort = viewModel::setSort,
         onToggleLayout = viewModel::toggleLayout,
+        onShuffleSongs = viewModel::shuffleSongs,
         onRefresh = viewModel::refresh,
         onPlaySong = viewModel::playSong,
         trackActions = TrackActions(
             onToggleLike = viewModel::toggleLike,
             onGoToAlbum = { navigation.onAlbum(it.albumId) },
             onGoToArtist = { navigation.onArtist(it.artistId) },
+            onFindSimilar = { artist, title -> navigation.onSimilar(artist, title) },
         ),
         modifier = modifier,
     )
@@ -106,6 +109,7 @@ fun LibraryScreen(
     onToggleLayout: () -> Unit,
     onRefresh: () -> Unit,
     onPlaySong: (Int) -> Unit,
+    onShuffleSongs: () -> Unit = {},
     modifier: Modifier = Modifier,
     trackActions: TrackActions = TrackActions(),
 ) {
@@ -130,7 +134,7 @@ fun LibraryScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             TabChips(state.tab, onSelectTab)
-            SortRow(state, onSort, onToggleLayout)
+            SortRow(state, onSort, onToggleLayout, onShuffleSongs)
             PullToRefreshBox(
                 isRefreshing = state.refreshing,
                 onRefresh = onRefresh,
@@ -182,7 +186,12 @@ private fun TabChips(selected: LibraryTab, onSelect: (LibraryTab) -> Unit) {
 }
 
 @Composable
-private fun SortRow(state: LibraryUiState, onSort: (LibrarySort) -> Unit, onToggleLayout: () -> Unit) {
+private fun SortRow(
+    state: LibraryUiState,
+    onSort: (LibrarySort) -> Unit,
+    onToggleLayout: () -> Unit,
+    onShuffle: () -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().padding(start = Spacing.sm, end = Spacing.xs),
@@ -212,7 +221,14 @@ private fun SortRow(state: LibraryUiState, onSort: (LibrarySort) -> Unit, onTogg
             }
         }
         Spacer(Modifier.weight(1f))
-        if (state.tab != LibraryTab.Songs) {
+        if (state.tab == LibraryTab.Songs) {
+            IconButton(onClick = onShuffle, enabled = state.songs.isNotEmpty()) {
+                Icon(
+                    painterResource(DowntifyIcons.Shuffle),
+                    contentDescription = stringResource(R.string.collection_shuffle),
+                )
+            }
+        } else {
             val grid = state.layout == LibraryLayout.Grid
             IconButton(onClick = onToggleLayout) {
                 Icon(

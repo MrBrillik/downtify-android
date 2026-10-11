@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.CoverArt
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
+import com.henriquesebastiao.downtify.core.designsystem.component.PlayingBars
 import com.henriquesebastiao.downtify.core.designsystem.component.SourceBadge
 import com.henriquesebastiao.downtify.core.designsystem.component.SourceBrand
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
@@ -61,8 +62,8 @@ import com.henriquesebastiao.downtify.core.model.formatDuration
 /**
  * A song the server can download: tapping anywhere plays it in full from
  * the server. Everything else lives in the row's menu: what sounds like
- * it, the download (then its progress), and — once the song is on the
- * server — the library actions (like, lyrics) instead of the download.
+ * it, the download (then its progress), and — once the song is in the
+ * library — the library actions (like, lyrics) instead of the download.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -77,6 +78,7 @@ internal fun RemoteSongRow(
     modifier: Modifier = Modifier,
     libraryTrack: Track? = null,
     isLiked: Boolean = false,
+    isPlaying: Boolean = false,
     onToggleLike: (Track) -> Unit = {},
     onShowLyrics: (Track) -> Unit = {},
 ) {
@@ -106,7 +108,7 @@ internal fun RemoteSongRow(
             }
         },
         leadingContent = {
-            PlayCover(song, playing, resolving, onPlay)
+            PlayCover(song, playing, isPlaying, resolving, onPlay)
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -191,7 +193,7 @@ private fun RemoteSongMenu(
                     onSimilar()
                 },
             )
-            if (job == null) {
+            if (job == null && libraryTrack == null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.search_download_to_server, song.title)) },
                     leadingIcon = {
@@ -223,7 +225,7 @@ private fun RemoteSongMenu(
                     },
                 )
             }
-            if (job?.status == ServerJobStatus.Done && libraryTrack != null) {
+            if (libraryTrack != null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(if (isLiked) R.string.track_unlike else R.string.track_like)) },
                     leadingIcon = {
@@ -251,7 +253,7 @@ private fun RemoteSongMenu(
 }
 
 @Composable
-private fun PlayCover(song: RemoteSong, playing: Boolean, resolving: Boolean, onPlay: () -> Unit) {
+private fun PlayCover(song: RemoteSong, playing: Boolean, isPlaying: Boolean, resolving: Boolean, onPlay: () -> Unit) {
     val label = stringResource(
         if (playing) R.string.search_stop_full else R.string.search_play_full,
         song.title,
@@ -262,34 +264,22 @@ private fun PlayCover(song: RemoteSong, playing: Boolean, resolving: Boolean, on
             .clip(MaterialTheme.shapes.small)
             .clickable(role = Role.Button, onClick = onPlay)
             .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            CoverArt(url = song.coverUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.size(56.dp))
+        CoverArt(url = song.coverUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.size(56.dp))
+        // Like a library row: the row that's playing shows the three bars (still when paused);
+        // anything else is a bare cover, tapped to play.
+        if (playing) PlayingBars(animate = isPlaying)
+        if (resolving) {
             Box(
                 Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM)),
                 contentAlignment = Alignment.Center,
             ) {
-                when {
-                    resolving -> CircularProgressIndicator(
-                        strokeWidth = 2.dp,
-                        color = Color.White,
-                        modifier = Modifier.size(24.dp),
-                    )
-
-                    playing -> Icon(
-                        painterResource(DowntifyIcons.Pause),
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp),
-                    )
-
-                    else -> Icon(
-                        painterResource(DowntifyIcons.Play),
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    color = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
             }
         }
     }

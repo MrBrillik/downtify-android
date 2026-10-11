@@ -68,6 +68,7 @@ import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.ServerJob
 import com.henriquesebastiao.downtify.core.model.ServerJobStatus
 import com.henriquesebastiao.downtify.core.model.StreamQuality
+import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.model.codecLabel
 import com.henriquesebastiao.downtify.core.model.formatDuration
 import com.henriquesebastiao.downtify.core.network.ServerUrls
@@ -102,9 +103,11 @@ data class NowPlayingActions(
 )
 
 /**
- * [hasLibraryCopy] is true when the playing stream has since been
- * downloaded: the stream keeps playing, but the buttons switch to the
- * library set (like, lyrics) and the download button goes away.
+ * [hasLibraryCopy] is true when the playing stream has since been downloaded (a library track
+ * matches it, passed as [libraryTrack]): the stream keeps playing, but the buttons switch to
+ * the library set (like, lyrics, the header menu) and the download button goes away. A finished
+ * server job ([ServerJobStatus.Done]) hides the download button at once; like, lyrics and the
+ * menu appear with the library sync, when there is a track id behind them to act on.
  */
 @Composable
 fun NowPlayingScreen(
@@ -115,11 +118,15 @@ fun NowPlayingScreen(
     modifier: Modifier = Modifier,
     downloadJob: ServerJob? = null,
     hasLibraryCopy: Boolean = false,
+    libraryTrack: Track? = null,
 ) {
     val track = state.track
     val episode = state.episode
     val stream = state.stream
     if (track == null && episode == null && stream == null) return
+    val downloaded = hasLibraryCopy || downloadJob?.status == ServerJobStatus.Done
+    // What the header menu and the artist tap navigate to: the library copy behind a stream.
+    val menuTrack = track ?: libraryTrack.takeIf { stream != null }
     val coverUrls = LocalCoverUrls.current
     // An episode's artwork is the publisher's own, at whatever size they serve; a stream's cover
     // is the absolute address the search gave, not a server cover.
@@ -139,7 +146,14 @@ fun NowPlayingScreen(
                 Modifier.fillMaxSize().padding(horizontal = Spacing.lg),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Header(state.context, track?.albumId.orEmpty(), track?.artistId.orEmpty(), episode, colors, actions)
+                Header(
+                    state.context,
+                    menuTrack?.albumId.orEmpty(),
+                    menuTrack?.artistId.orEmpty(),
+                    episode,
+                    colors,
+                    actions,
+                )
                 Spacer(Modifier.weight(0.3f))
                 CoverArt(
                     url = coverUrl,
@@ -158,14 +172,10 @@ fun NowPlayingScreen(
                     artist = track?.displayArtist ?: stream?.artist ?: episode?.showName.orEmpty(),
                     isLiked = isLiked.takeIf { episode == null && (stream == null || hasLibraryCopy) },
                     colors = colors,
-                    onArtist = {
-                        if (episode !=
-                            null
-                        ) {
-                            actions.onGoToShow(episode.showId)
-                        } else {
-                            actions.onGoToArtist(track?.artistId.orEmpty())
-                        }
+                    onArtist = when {
+                        episode != null -> ({ actions.onGoToShow(episode.showId) })
+                        menuTrack?.artistId?.isNotEmpty() == true -> ({ actions.onGoToArtist(menuTrack.artistId) })
+                        else -> null
                     },
                     onToggleLike = actions.onToggleLike,
                 )
@@ -225,7 +235,7 @@ fun NowPlayingScreen(
                             )
                         }
                     }
-                    if (stream != null && !hasLibraryCopy) {
+                    if (stream != null && !downloaded) {
                         StreamDownloadButton(
                             job = downloadJob,
                             title = stream.title,
@@ -305,6 +315,11 @@ private fun Header(
                 )
             }
         }
+        // A stream with no library copy goes nowhere: no album, no artist, no show.
+        if (episode == null && albumId.isEmpty() && artistId.isEmpty()) {
+            Spacer(Modifier.size(48.dp))
+            return@Row
+        }
         var menu by remember { mutableStateOf(false) }
         Box {
             IconButton(onClick = { menu = true }) {
@@ -353,7 +368,7 @@ private fun TitleRow(
     artist: String,
     isLiked: Boolean?,
     colors: CoverColors,
-    onArtist: () -> Unit,
+    onArtist: (() -> Unit)?,
     onToggleLike: () -> Unit,
 ) {
     Row(
@@ -374,7 +389,11 @@ private fun TitleRow(
                 color = colors.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable(onClick = onArtist).basicMarquee(),
+                modifier = if (onArtist != null) {
+                    Modifier.clickable(onClick = onArtist).basicMarquee()
+                } else {
+                    Modifier.basicMarquee()
+                },
             )
         }
         // Nothing to like on an episode.

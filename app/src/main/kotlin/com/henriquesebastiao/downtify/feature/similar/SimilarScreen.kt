@@ -131,7 +131,7 @@ fun SimilarScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Column(
-                Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth().padding(bottom = Spacing.sm),
                 verticalArrangement = Arrangement.spacedBy(Spacing.sm),
             ) {
                 SearchBar(
@@ -237,18 +237,20 @@ fun SimilarScreen(
                 ) {
                     items(state.songs, key = { "similar:${it.id}" }) { song ->
                         val libraryTrack = state.library?.findSong(song)
+                        val playing = state.playingStreamId?.let {
+                            StreamVideo.videoIdOf(song) == it
+                        } == true
                         RemoteSongRow(
                             song = song,
                             job = state.jobs[song.id],
-                            playing = state.playingStreamId?.let {
-                                StreamVideo.videoIdOf(song) == it
-                            } == true,
+                            playing = playing,
                             resolving = state.resolvingStreamId == song.id,
                             onPlay = { onPlay(song, state.songs) },
                             onSimilar = { onPivot(song) },
                             onDownload = { onDownload(song) },
                             libraryTrack = libraryTrack,
                             isLiked = libraryTrack != null && libraryTrack.id in state.likedIds,
+                            isPlaying = playing && state.isPlaying,
                             onToggleLike = onToggleLike,
                             onShowLyrics = onShowLyrics,
                         )

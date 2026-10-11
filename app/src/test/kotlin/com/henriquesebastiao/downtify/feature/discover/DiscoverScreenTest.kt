@@ -77,6 +77,20 @@ class DiscoverScreenTest {
     }
 
     @Test
+    fun aPreviewingArtistShowsBarsInsteadOfThePreviewButton() {
+        show(
+            DiscoverUiState(
+                loading = false,
+                artists = listOf(archive),
+                previewingArtist = "Archive",
+                previewPlaying = true,
+            ),
+        )
+        compose.onNodeWithContentDescription("Preview Archive").assertDoesNotExist()
+        compose.onNodeWithText("Archive").assertIsDisplayed()
+    }
+
+    @Test
     fun anArtistCanBeHidden() {
         var hidden: DiscoverArtist? = null
         show(DiscoverUiState(loading = false, artists = listOf(archive)), onHide = { hidden = it })

@@ -10,6 +10,7 @@ import com.henriquesebastiao.downtify.core.model.Lyrics
 import com.henriquesebastiao.downtify.core.model.PlaybackSpeeds
 import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ServerJob
+import com.henriquesebastiao.downtify.core.model.ServerJobStatus
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.CatalogJson
 import com.henriquesebastiao.downtify.core.player.PlayerController
@@ -70,7 +71,9 @@ class PlayerViewModel @Inject constructor(
         jobs.values.firstOrNull { job ->
             job.status.isActive && (job.songId == stream.videoId || matches(stream, job))
         } ?: jobs.values.firstOrNull { job ->
-            !job.status.isActive && job.songId == stream.videoId
+            job.status == ServerJobStatus.Done && (job.songId == stream.videoId || matches(stream, job))
+        } ?: jobs.values.firstOrNull { job ->
+            job.status == ServerJobStatus.Error && (job.songId == stream.videoId || matches(stream, job))
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
 

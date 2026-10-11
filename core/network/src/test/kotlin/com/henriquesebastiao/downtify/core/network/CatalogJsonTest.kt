@@ -113,17 +113,27 @@ class CatalogJsonTest {
 
     @Test
     fun readsQueueRowsAndProgressMessages() {
-        val jobs = CatalogJson.jobs(
-            NetworkJson.parseToJsonElement(
-                """[{"song":$ytSong,"status":"downloading","progress":42.5,"message":"","provider":"youtube-music"}]""",
-            ) as JsonArray,
-        )
+        val row = """[{"song":$ytSong,"status":"downloading","progress":42.5,"message":"",""" +
+            """"provider":"youtube-music","position":2}]"""
+        val jobs = CatalogJson.jobs(NetworkJson.parseToJsonElement(row) as JsonArray)
         assertEquals(ServerJobStatus.Downloading, jobs.single().status)
         assertEquals(42.5f, jobs.single().progress)
+        assertEquals(2, jobs.single().position)
 
         val event = LiveUpdatesClient.parse("""{"song":$ytSong,"progress":100,"status":"done","filename":"x.mp3"}""")
         assertTrue(event is LiveEvent.DownloadProgress && event.job.status == ServerJobStatus.Done)
         assertEquals(LiveEvent.QueueReload, LiveUpdatesClient.parse("""{"type":"queue_reload"}"""))
         assertNull(LiveUpdatesClient.parse("""{"type":"podcasts"}"""))
+    }
+
+    @Test
+    fun queueRowsWithoutAPositionParseToNull() {
+        val jobs = CatalogJson.jobs(
+            NetworkJson.parseToJsonElement(
+                """[{"song":$ytSong,"status":"done","progress":100,"message":"Done","position":null}]""",
+            ) as JsonArray,
+        )
+        assertEquals(ServerJobStatus.Done, jobs.single().status)
+        assertEquals(null, jobs.single().position)
     }
 }
