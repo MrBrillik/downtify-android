@@ -4,3 +4,10 @@
 -keep class * implements com.google.firebase.components.ComponentRegistrar {
     <init>();
 }
+
+# Retrofit reads a suspend function's response type from the generic signature of its
+# Continuation parameter. A response DTO the app never reads (PUT /api/v1/likes answers with
+# LikeResponse) has no other users, so R8 removed the class and erased the signature to
+# Continuation<Object>: the call then failed to convert the body after the server had saved
+# the like, and the app undid it. Keep the DTO classes themselves; their names may still change.
+-keep,allowobfuscation class com.henriquesebastiao.downtify.core.network.dto.**
