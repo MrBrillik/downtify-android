@@ -2,6 +2,7 @@ package com.henriquesebastiao.downtify.feature.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -51,6 +53,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.CoverArt
@@ -380,6 +383,7 @@ private fun EpisodeControls(state: PlayerState, colors: CoverColors, actions: No
 private fun speedLabel(speed: Float): String =
     (if (speed % 1f == 0f) speed.toInt().toString() else speed.toString()) + "×"
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SeekBar(state: PlayerState, colors: CoverColors, onSeek: (Long) -> Unit) {
     var dragging by remember { mutableStateOf<Float?>(null) }
@@ -390,6 +394,12 @@ private fun SeekBar(state: PlayerState, colors: CoverColors, onSeek: (Long) -> U
     val durationText = formatDuration(state.durationMs / 1000.0)
     val seekLabel = stringResource(R.string.player_seek)
     Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm)) {
+        val sliderColors = SliderDefaults.colors(
+            thumbColor = colors.onSurface,
+            activeTrackColor = colors.onSurface,
+            inactiveTrackColor = colors.onSurface.copy(alpha = 0.22f),
+        )
+        val interactionSource = remember { MutableInteractionSource() }
         Slider(
             value = value,
             onValueChange = { dragging = it },
@@ -397,11 +407,28 @@ private fun SeekBar(state: PlayerState, colors: CoverColors, onSeek: (Long) -> U
                 dragging?.let { onSeek((it * duration).toLong()) }
                 dragging = null
             },
-            colors = SliderDefaults.colors(
-                thumbColor = colors.onSurface,
-                activeTrackColor = colors.onSurface,
-                inactiveTrackColor = colors.onSurface.copy(alpha = 0.22f),
-            ),
+            colors = sliderColors,
+            interactionSource = interactionSource,
+            // A thin track, as in other music players. Material 3 draws the played part only once
+            // it's wider than the gap beside the thumb plus the track's end radius (half its
+            // height): with the default 16 dp track that hid the first seconds of every song.
+            // Without the gap and at 4 dp, what's left stays under the thumb.
+            thumb = {
+                SliderDefaults.Thumb(
+                    interactionSource = interactionSource,
+                    colors = sliderColors,
+                    thumbSize = DpSize(SEEK_THUMB_WIDTH, SEEK_THUMB_HEIGHT),
+                )
+            },
+            track = { sliderState ->
+                SliderDefaults.Track(
+                    sliderState = sliderState,
+                    colors = sliderColors,
+                    thumbTrackGapSize = 0.dp,
+                    drawStopIndicator = null,
+                    modifier = Modifier.height(SEEK_TRACK_HEIGHT),
+                )
+            },
             modifier = Modifier.semantics {
                 contentDescription = seekLabel
                 stateDescription = "$positionText / $durationText"
@@ -529,3 +556,7 @@ private fun NowPlayingPreview() {
         )
     }
 }
+
+private val SEEK_TRACK_HEIGHT = 4.dp
+private val SEEK_THUMB_WIDTH = 4.dp
+private val SEEK_THUMB_HEIGHT = 20.dp
