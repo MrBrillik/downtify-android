@@ -3,6 +3,7 @@ package com.henriquesebastiao.downtify.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -30,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -50,9 +54,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.henriquesebastiao.downtify.AppState
 import com.henriquesebastiao.downtify.MainViewModel
+import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.RecentContext
+import com.henriquesebastiao.downtify.core.player.PlayerEvent
 import com.henriquesebastiao.downtify.feature.artist.ArtistRoute
 import com.henriquesebastiao.downtify.feature.collection.CollectionRoute
 import com.henriquesebastiao.downtify.feature.connect.ConnectRoute
@@ -66,12 +72,14 @@ import com.henriquesebastiao.downtify.feature.player.MiniPlayer
 import com.henriquesebastiao.downtify.feature.player.NowPlayingActions
 import com.henriquesebastiao.downtify.feature.player.NowPlayingScreen
 import com.henriquesebastiao.downtify.feature.player.PlayerViewModel
-import com.henriquesebastiao.downtify.feature.player.QueueSheet
+import com.henriquesebastiao.downtify.feature.player.QueueActions
+import com.henriquesebastiao.downtify.feature.player.QueueScreen
 import com.henriquesebastiao.downtify.feature.podcasts.PodcastsRoute
 import com.henriquesebastiao.downtify.feature.podcasts.ShowRoute
 import com.henriquesebastiao.downtify.feature.search.SearchNavigation
 import com.henriquesebastiao.downtify.feature.search.SearchRoute
 import com.henriquesebastiao.downtify.feature.settings.SettingsRoute
+import com.henriquesebastiao.downtify.feature.similar.SimilarRoute as SimilarScreenRoute
 import com.henriquesebastiao.downtify.ui.common.CoverUrls
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.navigation.AlbumRoute
@@ -87,6 +95,7 @@ import com.henriquesebastiao.downtify.ui.navigation.SearchQueryRoute
 import com.henriquesebastiao.downtify.ui.navigation.SearchRoute as SearchDestination
 import com.henriquesebastiao.downtify.ui.navigation.SettingsRoute as SettingsDestination
 import com.henriquesebastiao.downtify.ui.navigation.ShowRoute as ShowDestination
+import com.henriquesebastiao.downtify.ui.navigation.SimilarRoute
 import com.henriquesebastiao.downtify.ui.navigation.TopLevelDestination
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -121,7 +130,20 @@ private fun MainShell() {
     val backStack by navController.currentBackStackEntryAsState()
     val destination = backStack?.destination
     val player: PlayerViewModel = hiltViewModel()
-    val playerState by player.state.collectAsStateWithLifecycle()
+    // Only whether something is loaded: the full state ticks twice a second and would recompose the whole shell.
+    val hasMedia by player.hasMedia.collectAsStateWithLifecycle()
+    val snackbar = remember { SnackbarHostState() }
+    val addedToQueue = stringResource(R.string.track_added_to_queue)
+    LaunchedEffect(player) {
+        player.events.collect { event ->
+            when (event) {
+                is PlayerEvent.AddedToQueue -> {
+                    snackbar.currentSnackbarData?.dismiss()
+                    snackbar.showSnackbar(addedToQueue)
+                }
+            }
+        }
+    }
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
     var currentTab by rememberSaveable { mutableStateOf(TopLevelDestination.Home) }
     val onSettings = destination?.hasRoute<SettingsDestination>() == true
@@ -137,8 +159,19 @@ private fun MainShell() {
                     item(
                         selected = selected,
                         onClick = {
-                            currentTab = tab
-                            navController.navigateTopLevel(tab)
+                            if (selected) {
+                                // Re-tapping the open tab closes whatever was
+                                // opened above it (Discover, an album, a
+                                // search) and shows the tab's start view.
+                                // Falls back to a plain switch when the tab
+                                // has no entry in the stack.
+                                if (!navController.popBackStack(tab.route, inclusive = false)) {
+                                    navController.navigateTopLevel(tab)
+                                }
+                            } else {
+                                currentTab = tab
+                                navController.navigateTopLevel(tab)
+                            }
                         },
                         icon = {
                             Icon(
@@ -157,23 +190,33 @@ private fun MainShell() {
             },
         ) {
             Column(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(1f)) { AppNavHost(navController) }
-                if (playerState.hasMedia && !onSettings) {
-                    MiniPlayer(
-                        state = playerState,
+                Box(Modifier.weight(1f)) {
+                    AppNavHost(navController)
+                    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+                }
+                if (hasMedia && !onSettings) {
+                    MiniPlayerHost(
+                        player = player,
                         onOpen = { nowPlayingOpen = true },
-                        onTogglePlay = player::togglePlayPause,
+                        onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
                     )
                 }
             }
         }
         NowPlayingOverlay(
-            open = nowPlayingOpen && playerState.hasMedia,
+            open = nowPlayingOpen && hasMedia,
             player = player,
             onClose = { nowPlayingOpen = false },
             onNavigate = { route ->
                 nowPlayingOpen = false
-                navController.navigate(route) { launchSingleTop = true }
+                // Similar opens per track: a fresh entry, so tapping it for
+                // another track while its page is already open still shows the
+                // new mix (single-top would keep the stale one).
+                if (route is SimilarRoute) {
+                    navController.navigate(route)
+                } else {
+                    navController.navigate(route) { launchSingleTop = true }
+                }
             },
         )
     }
@@ -193,14 +236,34 @@ private fun AppNavHost(navController: NavHostController) {
                 onSeeAll = { navController.navigateTopLevel(TopLevelDestination.Library) },
                 onOpenDiscover = { navController.navigate(DiscoverDestination) },
                 onOpenPodcasts = { navController.navigate(PodcastsDestination) },
+                onOpenSimilar = { navController.navigate(SimilarRoute()) },
             )
         }
         composable<SearchDestination> {
-            SearchRoute(SearchNavigation(onAlbum = toAlbum, onArtist = toArtist, onPlaylist = toPlaylist))
+            SearchRoute(
+                SearchNavigation(
+                    onAlbum = toAlbum,
+                    onArtist = toArtist,
+                    onPlaylist = toPlaylist,
+                    onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
+                    onOpenLink = { navController.navigate(SearchQueryRoute(it)) },
+                ),
+            )
         }
         // The same screen with something typed in (a suggestion from Discover); its query is the route's argument.
         composable<SearchQueryRoute> {
-            SearchRoute(SearchNavigation(onAlbum = toAlbum, onArtist = toArtist, onPlaylist = toPlaylist))
+            SearchRoute(
+                SearchNavigation(
+                    onAlbum = toAlbum,
+                    onArtist = toArtist,
+                    onPlaylist = toPlaylist,
+                    onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
+                    onOpenLink = { navController.navigate(SearchQueryRoute(it)) },
+                ),
+            )
+        }
+        composable<SimilarRoute> {
+            SimilarScreenRoute(onBack = navController::popBackStack)
         }
         composable<DiscoverDestination> {
             DiscoverRoute(
@@ -223,6 +286,7 @@ private fun AppNavHost(navController: NavHostController) {
                     onArtist = toArtist,
                     onPlaylist = toPlaylist,
                     onLiked = { navController.navigate(LikedRoute) },
+                    onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
                 ),
             )
         }
@@ -251,18 +315,40 @@ private fun AppNavHost(navController: NavHostController) {
     }
 }
 
+/** The mini player collects the ticking state itself, so only it recomposes as the song plays. */
+@Composable
+private fun MiniPlayerHost(player: PlayerViewModel, onOpen: () -> Unit, onSimilar: (String, String) -> Unit) {
+    val state by player.state.collectAsStateWithLifecycle()
+    val downloadJob by player.streamJob.collectAsStateWithLifecycle()
+    val streamTrack by player.streamTrack.collectAsStateWithLifecycle()
+    MiniPlayer(
+        state = state,
+        onOpen = onOpen,
+        onTogglePlay = player::togglePlayPause,
+        onSimilar = onSimilar,
+        downloadJob = downloadJob,
+        onDownloadStream = player::downloadStream,
+        hasLibraryCopy = streamTrack != null,
+    )
+}
+
 /** Now Playing slides up over everything and collapses back into the mini player, following predictive back. */
 @Composable
 private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: () -> Unit, onNavigate: (Any) -> Unit) {
     val state by player.state.collectAsStateWithLifecycle()
     val isLiked by player.isLiked.collectAsStateWithLifecycle()
+    val streamJob by player.streamJob.collectAsStateWithLifecycle()
+    val streamTrack by player.streamTrack.collectAsStateWithLifecycle()
     val serverName by player.serverName.collectAsStateWithLifecycle()
     val lyrics by player.lyrics.collectAsStateWithLifecycle()
     var backProgress by remember { mutableFloatStateOf(0f) }
     var sheet by rememberSaveable { mutableStateOf<String?>(null) }
+    var queueOpen by rememberSaveable { mutableStateOf(false) }
     val density = LocalDensity.current
 
-    PredictiveBackHandler(enabled = open && sheet == null) { progress ->
+    LaunchedEffect(open) { if (!open) queueOpen = false }
+    BackHandler(enabled = open && queueOpen) { queueOpen = false }
+    PredictiveBackHandler(enabled = open && sheet == null && !queueOpen) { progress ->
         try {
             progress.collect { backProgress = it.progress }
             onClose()
@@ -273,6 +359,33 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
     }
     LaunchedEffect(open) { if (open) backProgress = 0f }
 
+    val controls = remember(player, onClose, onNavigate) {
+        NowPlayingActions(
+            onCollapse = onClose,
+            onTogglePlay = player::togglePlayPause,
+            onNext = player::next,
+            onPrevious = player::previous,
+            onSeek = player::seekTo,
+            onToggleShuffle = player::toggleShuffle,
+            onCycleRepeat = player::cycleRepeat,
+            onToggleLike = player::toggleLike,
+            onDownloadStream = player::downloadStream,
+            onSimilar = { artist, title -> onNavigate(SimilarRoute(artist, title)) },
+            onOpenLyrics = {
+                player.loadLyrics()
+                sheet = SHEET_LYRICS
+            },
+            onOpenQueue = { queueOpen = true },
+            onOpenContext = { routeFor(it)?.let(onNavigate) },
+            onGoToAlbum = { onNavigate(AlbumRoute(it)) },
+            onGoToArtist = { onNavigate(ArtistDestination(it)) },
+            onSkipBack = player::skipBack,
+            onSkipForward = player::skipForward,
+            onCycleSpeed = player::cycleSpeed,
+            onGoToShow = { onNavigate(ShowDestination(it)) },
+        )
+    }
+
     AnimatedVisibility(
         visible = open,
         enter = slideInVertically { it },
@@ -282,28 +395,10 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
             state = state,
             isLiked = isLiked,
             serverName = serverName,
-            actions = NowPlayingActions(
-                onCollapse = onClose,
-                onTogglePlay = player::togglePlayPause,
-                onNext = player::next,
-                onPrevious = player::previous,
-                onSeek = player::seekTo,
-                onToggleShuffle = player::toggleShuffle,
-                onCycleRepeat = player::cycleRepeat,
-                onToggleLike = player::toggleLike,
-                onOpenLyrics = {
-                    player.loadLyrics()
-                    sheet = SHEET_LYRICS
-                },
-                onOpenQueue = { sheet = SHEET_QUEUE },
-                onOpenContext = { routeFor(it)?.let(onNavigate) },
-                onGoToAlbum = { onNavigate(AlbumRoute(it)) },
-                onGoToArtist = { onNavigate(ArtistDestination(it)) },
-                onSkipBack = player::skipBack,
-                onSkipForward = player::skipForward,
-                onCycleSpeed = player::cycleSpeed,
-                onGoToShow = { onNavigate(ShowDestination(it)) },
-            ),
+            downloadJob = streamJob,
+            hasLibraryCopy = streamTrack != null,
+            libraryTrack = streamTrack,
+            actions = controls,
             modifier = Modifier.graphicsLayer {
                 val p = backProgress
                 translationY = with(density) { (p * 96.dp.toPx()) }
@@ -315,16 +410,33 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
         )
     }
 
+    // The queue unfolds over Now Playing from its queue button, as in Spotify.
+    AnimatedVisibility(
+        visible = open && queueOpen,
+        enter = slideInVertically { it },
+        exit = slideOutVertically { it },
+    ) {
+        QueueScreen(
+            state = state,
+            actions = QueueActions(
+                onClose = { queueOpen = false },
+                onSkipTo = player::skipTo,
+                onRemove = player::removeFromQueue,
+                onClearQueued = player::clearQueued,
+                onMove = player::moveInQueue,
+            ),
+            controls = controls,
+        )
+    }
+
     when (sheet) {
         SHEET_LYRICS -> {
-            LaunchedEffect(state.track?.id) { player.loadLyrics() }
+            LaunchedEffect(state.track?.id, streamTrack?.id) { player.loadLyrics() }
             LyricsSheet(lyrics = lyrics, positionMs = state.positionMs, onSeek = player::seekTo, onDismiss = {
                 sheet =
                     null
             })
         }
-
-        SHEET_QUEUE -> QueueSheet(state = state, onSkipTo = player::skipTo, onDismiss = { sheet = null })
     }
 }
 
@@ -370,4 +482,3 @@ private fun routeFor(context: PlaybackContext): Any? = when (context.type) {
 }
 
 private const val SHEET_LYRICS = "lyrics"
-private const val SHEET_QUEUE = "queue"

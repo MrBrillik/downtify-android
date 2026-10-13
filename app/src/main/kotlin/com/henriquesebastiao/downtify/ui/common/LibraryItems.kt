@@ -1,5 +1,7 @@
 package com.henriquesebastiao.downtify.ui.common
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -116,6 +118,7 @@ fun CoverCard(
 }
 
 /** A list row with a cover: albums, artists, playlists in list layout and in search. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CoverRow(
     title: String,
@@ -130,8 +133,19 @@ fun CoverRow(
     trailing: (@Composable () -> Unit)? = null,
 ) {
     ListItem(
-        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = subtitle?.let { { Text(it, maxLines = subtitleLines, overflow = TextOverflow.Ellipsis) } },
+        headlineContent = {
+            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
+        },
+        supportingContent = subtitle?.let {
+            {
+                Text(
+                    it,
+                    maxLines = subtitleLines,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee(),
+                )
+            }
+        },
         leadingContent = {
             CoverArt(
                 url = coverUrl,
@@ -150,14 +164,19 @@ fun CoverRow(
 /** What a track row's menu can do. */
 data class TrackActions(
     val onToggleLike: ((Track) -> Unit)? = null,
+    /** Also turns on swipe-right-to-queue on the row. */
+    val onAddToQueue: ((Track) -> Unit)? = null,
     val onGoToAlbum: ((Track) -> Unit)? = null,
     val onGoToArtist: ((Track) -> Unit)? = null,
+    val onFindSimilar: ((artist: String, title: String) -> Unit)? = null,
 )
 
 /**
  * A song row. [leading] is its number (albums), its cover (lists) or, when it
- * is the current track, bouncing bars.
+ * is the current track, bouncing bars. Long titles scroll as a marquee so
+ * the full text stays readable.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TrackRow(
     track: Track,
@@ -173,6 +192,40 @@ fun TrackRow(
     actions: TrackActions = TrackActions(),
     containerColor: Color = Color.Transparent,
 ) {
+    val addToQueue = actions.onAddToQueue
+    if (addToQueue != null) {
+        // Opaque while it slides, so the swipe's color shows only beside it.
+        val opaque = if (containerColor == Color.Transparent) MaterialTheme.colorScheme.surface else containerColor
+        SwipeToQueue(onAddToQueue = { addToQueue(track) }, modifier = modifier) {
+            TrackListItem(
+                track, onClick, Modifier, number, coverUrl, showCover, isCurrent, isPlaying, isLiked, downloaded,
+                actions, opaque,
+            )
+        }
+    } else {
+        TrackListItem(
+            track, onClick, modifier, number, coverUrl, showCover, isCurrent, isPlaying, isLiked, downloaded,
+            actions, containerColor,
+        )
+    }
+}
+
+@Suppress("LongParameterList")
+@Composable
+private fun TrackListItem(
+    track: Track,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    number: Int?,
+    coverUrl: String?,
+    showCover: Boolean,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isLiked: Boolean,
+    downloaded: Boolean,
+    actions: TrackActions,
+    containerColor: Color,
+) {
     val highlight = if (isCurrent) MaterialTheme.colorScheme.primary else Color.Unspecified
     ListItem(
         headlineContent = {
@@ -182,6 +235,7 @@ fun TrackRow(
                 overflow = TextOverflow.Ellipsis,
                 color = highlight,
                 fontWeight = if (isCurrent) FontWeight.SemiBold else null,
+                modifier = Modifier.basicMarquee(),
             )
         },
         supportingContent = {
@@ -194,7 +248,12 @@ fun TrackRow(
                         modifier = Modifier.padding(end = 6.dp).size(14.dp),
                     )
                 }
-                Text(trackSubtitle(track), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    trackSubtitle(track),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee(),
+                )
             }
         },
         leadingContent = {
@@ -236,6 +295,16 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions) {
             )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            actions.onAddToQueue?.let { add ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.track_add_to_queue)) },
+                    leadingIcon = { Icon(painterResource(DowntifyIcons.AddToQueue), contentDescription = null) },
+                    onClick = {
+                        open = false
+                        add(track)
+                    },
+                )
+            }
             actions.onToggleLike?.let { toggle ->
                 DropdownMenuItem(
                     text = { Text(stringResource(if (isLiked) R.string.track_unlike else R.string.track_like)) },
@@ -271,6 +340,18 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions) {
                         onClick = {
                             open = false
                             go(track)
+                        },
+                    )
+                }
+            }
+            if (track.displayArtist.isNotBlank() && track.displayTitle.isNotBlank()) {
+                actions.onFindSimilar?.let { find ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.similar_find)) },
+                        leadingIcon = { Icon(painterResource(DowntifyIcons.Explore), contentDescription = null) },
+                        onClick = {
+                            open = false
+                            find(track.displayArtist, track.displayTitle)
                         },
                     )
                 }

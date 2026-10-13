@@ -103,8 +103,8 @@ class DownloadsScreenTest {
     fun theServerTabListsTheServersQueue() {
         var tab: DownloadsTab? = null
         val jobs = listOf(
-            ServerJob("1", "Harbor Song", "Nora Vale", "Harbor Nights", "", ServerJobStatus.Downloading, 42f, ""),
-            ServerJob("2", "Low Lights", "Nora Vale", "Harbor Nights", "", ServerJobStatus.Queued, 0f, ""),
+            ServerJob("1", "Harbor Song", "Nora Vale", "Harbor Nights", "", ServerJobStatus.Downloading, 42f, "", 1),
+            ServerJob("2", "Low Lights", "Nora Vale", "Harbor Nights", "", ServerJobStatus.Queued, 0f, "", 2),
         )
         compose.setContent {
             DowntifyTheme {
@@ -123,6 +123,8 @@ class DownloadsScreenTest {
         }
         compose.onNodeWithText("The server is downloading 2 songs").assertExists()
         compose.onNodeWithText("Nora Vale · Downloading · 42%").assertExists()
+        compose.onNodeWithText("#1").assertExists()
+        compose.onNodeWithText("#2").assertExists()
         compose.onNodeWithText("On this phone").performClick()
         assertEquals(DownloadsTab.Phone, tab)
     }

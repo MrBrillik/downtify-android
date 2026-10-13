@@ -87,6 +87,7 @@ fun CollectionRoute(
         onToggleOffline = viewModel::toggleOffline,
         trackActions = TrackActions(
             onToggleLike = viewModel::toggleLike,
+            onAddToQueue = viewModel::addToQueue,
             onGoToAlbum = if (state.kind == CollectionKind.Album) null else { t -> onAlbum(t.albumId) },
             onGoToArtist = { onArtist(it.artistId) },
         ),

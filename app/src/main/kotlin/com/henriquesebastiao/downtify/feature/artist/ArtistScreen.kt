@@ -70,7 +70,11 @@ fun ArtistRoute(
         onPlay = viewModel::play,
         onPlayOrPause = viewModel::playOrPause,
         onShuffle = viewModel::shuffle,
-        trackActions = TrackActions(onToggleLike = viewModel::toggleLike, onGoToAlbum = { onAlbum(it.albumId) }),
+        trackActions = TrackActions(
+            onToggleLike = viewModel::toggleLike,
+            onAddToQueue = viewModel::addToQueue,
+            onGoToAlbum = { onAlbum(it.albumId) },
+        ),
         modifier = modifier,
     )
 }

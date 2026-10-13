@@ -12,8 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -21,18 +19,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.R
-import com.henriquesebastiao.downtify.core.designsystem.component.PlayingBars
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.LrcParser
-import com.henriquesebastiao.downtify.core.player.PlayerState
 
 /** Lyrics, synced to the playhead when the server has an LRC; tap a line to jump to it. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,39 +89,6 @@ private fun SyncedLyrics(lyrics: LyricsState.Loaded, positionMs: Long, onSeek: (
                     .clickable { onSeek(line.timeMs) }
                     .padding(horizontal = Spacing.xl, vertical = Spacing.sm),
             )
-        }
-    }
-}
-
-/** The queue: tap a row to play it. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun QueueSheet(state: PlayerState, onSkipTo: (Int) -> Unit, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        SheetTitle(stringResource(R.string.player_queue))
-        val listState = rememberLazyListState(initialFirstVisibleItemIndex = state.currentIndex.coerceAtLeast(0))
-        LazyColumn(state = listState, modifier = Modifier.heightIn(max = 560.dp)) {
-            itemsIndexed(state.queue, key = { index, entry -> "$index:${entry.trackId}" }) { index, entry ->
-                val current = index == state.currentIndex
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            entry.title,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = if (current) MaterialTheme.colorScheme.primary else Color.Unspecified,
-                        )
-                    },
-                    supportingContent = { Text(entry.artist, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    leadingContent = if (current) {
-                        { PlayingBars(animate = state.isPlaying) }
-                    } else {
-                        null
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.clickable { onSkipTo(index) },
-                )
-            }
         }
     }
 }

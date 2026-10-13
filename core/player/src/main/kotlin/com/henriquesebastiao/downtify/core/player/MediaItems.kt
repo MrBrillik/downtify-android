@@ -9,6 +9,9 @@ import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.PodcastEpisode
 import com.henriquesebastiao.downtify.core.model.PodcastShow
+import com.henriquesebastiao.downtify.core.model.RemoteSong
+import com.henriquesebastiao.downtify.core.model.StreamIds
+import com.henriquesebastiao.downtify.core.model.StreamVideo
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 
@@ -17,18 +20,33 @@ object MediaItems {
     /** Resolved to the real stream URL (and quality) only when the player opens it: see [StreamResolver]. */
     const val SCHEME = "downtify"
     private const val HOST = "track"
+    private const val STREAM_HOST = "stream"
     private const val MS_PER_SECOND = 1000L
     private const val EXTRA_EPISODE_ID = "downtify.episode_id"
     private const val EXTRA_SHOW_ID = "downtify.show_id"
     private const val EXTRA_FILE = "downtify.file"
+    private const val EXTRA_VIDEO_ID = "downtify.video_id"
+    private const val EXTRA_RAW = "downtify.raw_song"
     private const val EXTRA_CONTEXT_TYPE = "downtify.context_type"
     private const val EXTRA_CONTEXT_ID = "downtify.context_id"
+    private const val EXTRA_QUEUED = "downtify.queued"
+
+    fun streamUri(videoId: String): Uri =
+        Uri.Builder().scheme(SCHEME).authority(STREAM_HOST).appendPath(videoId).build()
+
+    /** The video id when [uri] is a stream address, else null. */
+    fun streamVideoIdOf(uri: Uri): String? = if (uri.scheme == SCHEME && uri.authority == STREAM_HOST) {
+        uri.lastPathSegment?.takeIf { StreamVideo.isVideoId(it) }
+    } else {
+        null
+    }
 
     fun uriFor(trackId: String): Uri = Uri.Builder().scheme(SCHEME).authority(HOST).appendPath(trackId).build()
 
     fun trackIdOf(uri: Uri): String? = if (uri.scheme == SCHEME && uri.authority == HOST) uri.lastPathSegment else null
 
-    fun from(track: Track, baseUrl: String?): MediaItem = MediaItem.Builder()
+    /** [queued]: the user added it with "Add to queue" (it plays before the rest of the context). */
+    fun from(track: Track, baseUrl: String?, queued: Boolean = false): MediaItem = MediaItem.Builder()
         .setMediaId(track.id)
         .setUri(uriFor(track.id))
         .setMediaMetadata(
@@ -49,9 +67,19 @@ object MediaItems {
                 .setIsPlayable(true)
                 .setIsBrowsable(false)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                .apply { if (queued) setExtras(Bundle().apply { putBoolean(EXTRA_QUEUED, true) }) }
                 .build(),
         )
         .build()
+
+    /** [item] with its "Add to queue" mark set to [queued]. */
+    fun withQueued(item: MediaItem, queued: Boolean): MediaItem {
+        val extras = Bundle(item.mediaMetadata.extras ?: Bundle.EMPTY).apply { putBoolean(EXTRA_QUEUED, queued) }
+        return item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(extras).build()).build()
+    }
+
+    /** Whether the user added [item] with "Add to queue". Survives the trip to the service (metadata does). */
+    fun isQueued(item: MediaItem): Boolean = item.mediaMetadata.extras?.getBoolean(EXTRA_QUEUED) == true
 
     /**
      * A downloaded podcast episode, played from the server's file (`/downloads/...`). The address also
@@ -85,6 +113,52 @@ object MediaItems {
                     .build(),
             )
             .build()
+    }
+
+    /**
+     * A song that isn't in the library, played in full from the server's
+     * stream cache. The address resolves when the player opens it (see
+     * [StreamResolver]); the extras carry everything the UI needs without
+     * a library row (download via [RemoteSong.raw], prefetch, display).
+     */
+    fun stream(song: RemoteSong, videoId: String): MediaItem {
+        val url = streamUri(videoId)
+        return MediaItem.Builder()
+            .setMediaId(StreamIds.mediaId(videoId))
+            .setUri(url)
+            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(url).build())
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(song.title)
+                    .setArtist(song.artist)
+                    .setAlbumTitle(song.album)
+                    .setDurationMs((song.durationSeconds * MS_PER_SECOND).toLong())
+                    .setArtworkUri(song.coverUrl.takeIf { it.isNotBlank() }?.let(Uri::parse))
+                    .setIsPlayable(true)
+                    .setIsBrowsable(false)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                    .setExtras(
+                        Bundle().apply {
+                            putString(EXTRA_VIDEO_ID, videoId)
+                            putString(EXTRA_RAW, song.raw)
+                        },
+                    )
+                    .build(),
+            )
+            .build()
+    }
+
+    /** The stream [item] stands for, or null for library and episode items. */
+    fun streamOf(item: MediaItem): PlayingStream? {
+        val videoId = StreamIds.videoIdOf(item.mediaId) ?: return null
+        val extras = item.mediaMetadata.extras
+        return PlayingStream(
+            videoId = videoId,
+            title = item.mediaMetadata.title?.toString().orEmpty(),
+            artist = item.mediaMetadata.artist?.toString().orEmpty(),
+            coverUrl = item.mediaMetadata.artworkUri?.toString().orEmpty(),
+            raw = extras?.getString(EXTRA_RAW).orEmpty(),
+        )
     }
 
     /** The episode [item] stands for, or null for a song. */

@@ -31,13 +31,17 @@ class SearchServerTest {
     private val album =
         RemoteAlbum("alb", "Harbor Nights", "Nora Vale", "", "2021", "https://music.youtube.com/browse/alb", "Album")
 
-    private fun show(state: SearchUiState, remote: RemoteActions = RemoteActions()) {
+    private fun show(
+        state: SearchUiState,
+        remote: RemoteActions = RemoteActions(),
+        navigation: SearchNavigation = SearchNavigation(),
+    ) {
         compose.setContent {
             DowntifyTheme {
                 SearchScreen(
                     query = state.query,
                     state = state,
-                    navigation = SearchNavigation(),
+                    navigation = navigation,
                     onQueryChange = {},
                     onFilterChange = {},
                     onPlaySong = {},
@@ -48,8 +52,8 @@ class SearchServerTest {
     }
 
     @Test
-    fun serverResultsCanBePreviewedAndDownloaded() {
-        var previewed: RemoteSong? = null
+    fun serverResultsPlayInFullAndDownload() {
+        var played: Pair<RemoteSong, List<RemoteSong>>? = null
         var downloaded: RemoteSong? = null
         val harbor = song("s1", "Harbor Song", CatalogSource.Spotify)
         show(
@@ -57,14 +61,34 @@ class SearchServerTest {
                 query = "harbor",
                 server = ServerResults.Found(listOf(harbor), listOf(album)),
             ),
-            RemoteActions(onPreview = { previewed = it }, onDownload = { downloaded = it }),
+            RemoteActions(onPlay = { song, songs -> played = song to songs }, onDownload = { downloaded = it }),
         )
         compose.onNodeWithText("Not in your library yet").assertExists()
         compose.onNodeWithText("Spotify").assertExists()
-        compose.onNodeWithContentDescription("Play a preview of Harbor Song").performClick()
-        compose.onNodeWithContentDescription("Download Harbor Song to the server").performClick()
-        assertEquals(harbor, previewed)
+        compose.onNodeWithContentDescription("Play Harbor Song in full").performClick()
+        assertEquals(harbor, played?.first)
+        assertEquals(listOf(harbor), played?.second)
+        compose.onNodeWithText("Harbor Song").performClick()
+        assertEquals(harbor, played?.first)
+        compose.onNodeWithContentDescription("More options for Harbor Song").performClick()
+        compose.onNodeWithText("Download Harbor Song to the server").performClick()
         assertEquals(harbor, downloaded)
+    }
+
+    @Test
+    fun serverResultsOfferSimilarFromTheRowMenu() {
+        var similar: Pair<String, String>? = null
+        val harbor = song("s1", "Harbor Song", CatalogSource.Spotify)
+        show(
+            SearchUiState(
+                query = "harbor",
+                server = ServerResults.Found(listOf(harbor), emptyList()),
+            ),
+            navigation = SearchNavigation(onSimilar = { artist, title -> similar = artist to title }),
+        )
+        compose.onNodeWithContentDescription("More options for Harbor Song").performClick()
+        compose.onNodeWithText("Tracks like Harbor Song").performClick()
+        assertEquals("Nora Vale" to "Harbor Song", similar)
     }
 
     @Test
@@ -94,6 +118,38 @@ class SearchServerTest {
     }
 
     @Test
+    fun aDownloadedSongOffersLikeAndLyricsInsteadOfDownload() {
+        val downloaded = com.henriquesebastiao.downtify.ui.common.PreviewData.tracks[7]
+        var liked: com.henriquesebastiao.downtify.core.model.Track? = null
+        var lyrics: com.henriquesebastiao.downtify.core.model.Track? = null
+        val harbor = song("s1", "Harbor Song", CatalogSource.Spotify)
+        compose.setContent {
+            DowntifyTheme {
+                RemoteSongRow(
+                    song = harbor,
+                    job = null,
+                    playing = false,
+                    resolving = false,
+                    onPlay = {},
+                    onSimilar = {},
+                    onDownload = {},
+                    libraryTrack = downloaded,
+                    isLiked = false,
+                    onToggleLike = { liked = it },
+                    onShowLyrics = { lyrics = it },
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("More options for Harbor Song").performClick()
+        compose.onNodeWithText("Download Harbor Song to the server").assertDoesNotExist()
+        compose.onNodeWithText("Add to Liked songs").performClick()
+        org.junit.Assert.assertEquals(downloaded, liked)
+        compose.onNodeWithContentDescription("More options for Harbor Song").performClick()
+        compose.onNodeWithText("Lyrics").performClick()
+        org.junit.Assert.assertEquals(downloaded, lyrics)
+    }
+
+    @Test
     fun aPastedLinkOffersToDownloadAllOfIt() {
         var asked: ResolvedLink? = null
         val link = ResolvedLink(
@@ -112,6 +168,20 @@ class SearchServerTest {
         )
         compose.onNodeWithText("Download all 2 songs to the server").performClick()
         assertEquals(link, asked)
+    }
+
+    @Test
+    fun aServerAlbumOpensItsLink() {
+        var opened: String? = null
+        show(
+            SearchUiState(
+                query = "harbor",
+                server = ServerResults.Found(emptyList(), listOf(album)),
+            ),
+            navigation = SearchNavigation(onOpenLink = { opened = it }),
+        )
+        compose.onNodeWithText("Harbor Nights").performClick()
+        assertEquals("https://music.youtube.com/browse/alb", opened)
     }
 
     @Test
