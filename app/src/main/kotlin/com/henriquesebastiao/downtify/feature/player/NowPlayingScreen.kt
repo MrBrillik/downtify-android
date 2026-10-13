@@ -206,34 +206,17 @@ fun NowPlayingScreen(
                     )
                 }
                 Spacer(Modifier.weight(0.3f))
-                // Repeat lives here, next to lyrics and the queue: the transport
+                // Similar lives here, next to lyrics and the queue: the transport
                 // row stays five buttons wide (shuffle, previous, play, next,
-                // similar), so the last one is never squeezed off-screen.
+                // repeat), so the last one is never squeezed off-screen.
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), horizontalArrangement = Arrangement.End) {
-                    if (episode == null) {
-                        IconToggleButton(
-                            checked = state.repeat != RepeatMode.Off,
-                            onCheckedChange = { actions.onCycleRepeat() },
-                            colors = iconToggleButtonColors(
-                                contentColor = colors.onSurfaceVariant,
-                                checkedContentColor = MaterialTheme.colorScheme.primary,
-                            ),
-                        ) {
+                    val similarArtist = state.track?.displayArtist ?: state.stream?.artist.orEmpty()
+                    val similarTitle = state.track?.displayTitle ?: state.stream?.title.orEmpty()
+                    if (episode == null && similarArtist.isNotBlank() && similarTitle.isNotBlank()) {
+                        IconButton(onClick = { actions.onSimilar(similarArtist, similarTitle) }) {
                             Icon(
-                                painterResource(
-                                    if (state.repeat == RepeatMode.One) {
-                                        DowntifyIcons.RepeatOne
-                                    } else {
-                                        DowntifyIcons.Repeat
-                                    },
-                                ),
-                                contentDescription = stringResource(
-                                    when (state.repeat) {
-                                        RepeatMode.Off -> R.string.player_repeat_off
-                                        RepeatMode.All -> R.string.player_repeat_all
-                                        RepeatMode.One -> R.string.player_repeat_one
-                                    },
-                                ),
+                                painterResource(DowntifyIcons.Explore),
+                                contentDescription = stringResource(R.string.search_similar, similarTitle),
                             )
                         }
                     }
@@ -414,7 +397,7 @@ private fun TitleRow(
     }
 }
 
-/** How big the transport buttons are. The side buttons (shuffle, similar, speed) stay 48 dp. */
+/** How big the transport buttons are. The side buttons (shuffle, repeat, speed) stay 48 dp. */
 private data class TransportSizes(val skip: Dp, val playWidth: Dp, val playHeight: Dp, val playIcon: Dp)
 
 /** The design's sizes, in dp: the skip buttons, and play's width, height and icon. */
@@ -557,8 +540,9 @@ private fun Controls(state: PlayerState, colors: CoverColors, actions: NowPlayin
         containerColor = colors.onSurface.copy(alpha = 0.12f),
         contentColor = colors.onSurface,
     )
-    // Transport order: shuffle, previous, play, next — and tracks like this
-    // one last on the right (episodes have none).
+    // Transport order: shuffle, previous, play, next, repeat — tracks like
+    // this one moved to the bottom row, next to lyrics and the queue
+    // (episodes have neither).
     TransportRow { sizes ->
         IconToggleButton(checked = state.shuffle, onCheckedChange = {
             actions.onToggleShuffle()
@@ -577,16 +561,27 @@ private fun Controls(state: PlayerState, colors: CoverColors, actions: NowPlayin
         FilledTonalIconButton(onClick = actions.onNext, colors = round, modifier = Modifier.size(sizes.skip)) {
             Icon(painterResource(DowntifyIcons.Next), contentDescription = stringResource(R.string.player_next))
         }
-        val similarArtist = state.track?.displayArtist ?: state.stream?.artist.orEmpty()
-        val similarTitle = state.track?.displayTitle ?: state.stream?.title.orEmpty()
-        if (state.episode == null && similarArtist.isNotBlank() && similarTitle.isNotBlank()) {
-            IconButton(onClick = { actions.onSimilar(similarArtist, similarTitle) }) {
-                Icon(
-                    painterResource(DowntifyIcons.Explore),
-                    contentDescription = stringResource(R.string.search_similar, similarTitle),
-                    tint = colors.onSurfaceVariant,
-                )
-            }
+        IconToggleButton(
+            checked = state.repeat != RepeatMode.Off,
+            onCheckedChange = { actions.onCycleRepeat() },
+            colors = toggleColors,
+        ) {
+            Icon(
+                painterResource(
+                    if (state.repeat == RepeatMode.One) {
+                        DowntifyIcons.RepeatOne
+                    } else {
+                        DowntifyIcons.Repeat
+                    },
+                ),
+                contentDescription = stringResource(
+                    when (state.repeat) {
+                        RepeatMode.Off -> R.string.player_repeat_off
+                        RepeatMode.All -> R.string.player_repeat_all
+                        RepeatMode.One -> R.string.player_repeat_one
+                    },
+                ),
+            )
         }
     }
 }
