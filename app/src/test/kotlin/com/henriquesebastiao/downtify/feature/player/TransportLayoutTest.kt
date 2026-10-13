@@ -57,7 +57,7 @@ class TransportLayoutTest {
     @Test
     fun aSongsButtonsDoNotTouchOnA360dpScreen() {
         show(songState)
-        assertGaps(listOf("Shuffle, off", "Previous", "Pause", "Next", "Tracks like ${track.displayTitle}"), 7.5f * 2)
+        assertGaps(listOf("Shuffle, off", "Previous", "Pause", "Next", "Repeat, off"), 7.5f * 2)
     }
 
     @Config(qualifiers = "w360dp-h800dp-xhdpi")

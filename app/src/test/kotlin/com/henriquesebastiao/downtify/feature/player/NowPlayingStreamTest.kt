@@ -161,7 +161,7 @@ class NowPlayingStreamTest {
     }
 
     @Test
-    fun transportEndsWithSimilarOnTheRight() {
+    fun transportEndsWithRepeatOnTheRight() {
         compose.setContent {
             DowntifyTheme {
                 NowPlayingScreen(
@@ -179,7 +179,7 @@ class NowPlayingStreamTest {
             x("Previous"),
             x("Pause"),
             x("Next"),
-            x("Tracks like Believe"),
+            x("Repeat, off"),
         )
         assertEquals(order.sorted(), order)
     }
