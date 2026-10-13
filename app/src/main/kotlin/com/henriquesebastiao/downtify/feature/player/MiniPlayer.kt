@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -82,7 +83,8 @@ fun MiniPlayer(
     ) {
         Box {
             Row(
-                Modifier.padding(start = Spacing.sm, end = Spacing.xs),
+                // Fill the card: without a height the row wraps its 48 dp content and sits at the top.
+                Modifier.fillMaxSize().padding(start = Spacing.sm, end = Spacing.xs),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,6 +55,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.CoverArt
@@ -412,6 +414,69 @@ private fun TitleRow(
     }
 }
 
+/** How big the transport buttons are. The side buttons (shuffle, similar, speed) stay 48 dp. */
+private data class TransportSizes(val skip: Dp, val playWidth: Dp, val playHeight: Dp, val playIcon: Dp)
+
+/** The design's sizes, in dp: the skip buttons, and play's width, height and icon. */
+private const val SKIP_DP = 64f
+private const val PLAY_WIDTH_DP = 104f
+private const val PLAY_HEIGHT_DP = 80f
+private const val PLAY_ICON_DP = 36f
+
+/** Two side buttons of 48 dp, and the three big ones at full size: 64 + 104 + 64 dp. */
+private const val SIDE_BUTTONS_DP = 2 * 48f
+private const val BIG_BUTTONS_DP = SKIP_DP * 2 + PLAY_WIDTH_DP
+
+/** The least space kept between two buttons, so they never touch. */
+private const val MIN_GAP_DP = 8f
+
+/** Never smaller than this fraction: the skip buttons stay at 48 dp, the touch target minimum. */
+private const val MIN_SCALE = 0.75f
+
+/**
+ * The big buttons at the design's size when there is room for the design's spacing, and smaller —
+ * down to [MIN_SCALE] — when there isn't. A 360 dp phone leaves 328 dp, exactly what the full-size
+ * buttons take, so they used to touch.
+ */
+private fun transportSizes(rowWidth: Dp): TransportSizes {
+    val room = rowWidth.value - SIDE_BUTTONS_DP - MIN_GAP_DP * 4
+    val scale = (room / BIG_BUTTONS_DP).coerceIn(MIN_SCALE, 1f)
+    return TransportSizes(
+        skip = (SKIP_DP * scale).dp,
+        playWidth = (PLAY_WIDTH_DP * scale).dp,
+        playHeight = (PLAY_HEIGHT_DP * scale).dp,
+        playIcon = (PLAY_ICON_DP * scale).dp,
+    )
+}
+
+/** The transport buttons in one row with an even gap between them (the design's spacing). */
+@Composable
+private fun TransportRow(content: @Composable RowScope.(TransportSizes) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(vertical = Spacing.sm)) {
+        val sizes = transportSizes(maxWidth)
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) { content(sizes) }
+    }
+}
+
+@Composable
+private fun PlayButton(isPlaying: Boolean, sizes: TransportSizes, onClick: () -> Unit) {
+    FilledIconButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(28.dp),
+        modifier = Modifier.size(width = sizes.playWidth, height = sizes.playHeight),
+    ) {
+        Icon(
+            painterResource(if (isPlaying) DowntifyIcons.Pause else DowntifyIcons.Play),
+            contentDescription = stringResource(if (isPlaying) R.string.player_pause else R.string.player_play),
+            modifier = Modifier.size(sizes.playIcon),
+        )
+    }
+}
+
 /** An episode: speed, 10 s back, play, 30 s forward — in place of shuffle, previous, next and repeat. */
 @Composable
 private fun EpisodeControls(state: PlayerState, colors: CoverColors, actions: NowPlayingActions) {
@@ -419,11 +484,7 @@ private fun EpisodeControls(state: PlayerState, colors: CoverColors, actions: No
         containerColor = colors.onSurface.copy(alpha = 0.12f),
         contentColor = colors.onSurface,
     )
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    TransportRow { sizes ->
         val speedText = speedLabel(state.speed)
         val speedDescription = stringResource(R.string.player_speed, speedText)
         TextButton(
@@ -431,26 +492,14 @@ private fun EpisodeControls(state: PlayerState, colors: CoverColors, actions: No
             colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurfaceVariant),
             modifier = Modifier.widthIn(min = 48.dp).semantics { contentDescription = speedDescription },
         ) { Text(speedText, style = MaterialTheme.typography.labelLarge) }
-        FilledTonalIconButton(onClick = actions.onSkipBack, colors = round, modifier = Modifier.size(64.dp)) {
+        FilledTonalIconButton(onClick = actions.onSkipBack, colors = round, modifier = Modifier.size(sizes.skip)) {
             Icon(
                 painterResource(DowntifyIcons.SkipBack),
                 contentDescription = stringResource(R.string.player_skip_back),
             )
         }
-        FilledIconButton(
-            onClick = actions.onTogglePlay,
-            shape = RoundedCornerShape(28.dp),
-            modifier = Modifier.size(width = 104.dp, height = 80.dp),
-        ) {
-            Icon(
-                painterResource(if (state.isPlaying) DowntifyIcons.Pause else DowntifyIcons.Play),
-                contentDescription = stringResource(
-                    if (state.isPlaying) R.string.player_pause else R.string.player_play,
-                ),
-                modifier = Modifier.size(36.dp),
-            )
-        }
-        FilledTonalIconButton(onClick = actions.onSkipForward, colors = round, modifier = Modifier.size(64.dp)) {
+        PlayButton(state.isPlaying, sizes, actions.onTogglePlay)
+        FilledTonalIconButton(onClick = actions.onSkipForward, colors = round, modifier = Modifier.size(sizes.skip)) {
             Icon(
                 painterResource(DowntifyIcons.SkipForward),
                 contentDescription = stringResource(R.string.player_skip_forward),
@@ -510,11 +559,7 @@ private fun Controls(state: PlayerState, colors: CoverColors, actions: NowPlayin
     )
     // Transport order: shuffle, previous, play, next — and tracks like this
     // one last on the right (episodes have none).
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    TransportRow { sizes ->
         IconToggleButton(checked = state.shuffle, onCheckedChange = {
             actions.onToggleShuffle()
         }, colors = toggleColors) {
@@ -525,23 +570,11 @@ private fun Controls(state: PlayerState, colors: CoverColors, actions: NowPlayin
                 ),
             )
         }
-        FilledTonalIconButton(onClick = actions.onPrevious, colors = round, modifier = Modifier.size(64.dp)) {
+        FilledTonalIconButton(onClick = actions.onPrevious, colors = round, modifier = Modifier.size(sizes.skip)) {
             Icon(painterResource(DowntifyIcons.Previous), contentDescription = stringResource(R.string.player_previous))
         }
-        FilledIconButton(
-            onClick = actions.onTogglePlay,
-            shape = RoundedCornerShape(28.dp),
-            modifier = Modifier.size(width = 104.dp, height = 80.dp),
-        ) {
-            Icon(
-                painterResource(if (state.isPlaying) DowntifyIcons.Pause else DowntifyIcons.Play),
-                contentDescription = stringResource(
-                    if (state.isPlaying) R.string.player_pause else R.string.player_play,
-                ),
-                modifier = Modifier.size(36.dp),
-            )
-        }
-        FilledTonalIconButton(onClick = actions.onNext, colors = round, modifier = Modifier.size(64.dp)) {
+        PlayButton(state.isPlaying, sizes, actions.onTogglePlay)
+        FilledTonalIconButton(onClick = actions.onNext, colors = round, modifier = Modifier.size(sizes.skip)) {
             Icon(painterResource(DowntifyIcons.Next), contentDescription = stringResource(R.string.player_next))
         }
         val similarArtist = state.track?.displayArtist ?: state.stream?.artist.orEmpty()
