@@ -27,14 +27,14 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-enum class LibraryTab { Albums, Artists, Playlists, Songs }
+enum class LibraryTab { Songs, Albums, Artists, Playlists }
 
 /** A playlist row: [playlist] null is "Liked songs". */
 data class PlaylistItem(val playlist: Playlist?, val title: String, val count: Int, val coverTrackId: String?)
 
 data class LibraryUiState(
     val loading: Boolean = true,
-    val tab: LibraryTab = LibraryTab.Albums,
+    val tab: LibraryTab = LibraryTab.Songs,
     val layout: LibraryLayout = LibraryLayout.Grid,
     val sort: LibrarySort = LibrarySort.RecentlyAdded,
     val albums: List<Album> = emptyList(),
@@ -56,7 +56,7 @@ class LibraryViewModel @Inject constructor(
     private val savedState: SavedStateHandle,
 ) : ViewModel() {
 
-    private val tab = savedState.getStateFlow(KEY_TAB, LibraryTab.Albums.name)
+    private val tab = savedState.getStateFlow(KEY_TAB, LibraryTab.Songs.name)
 
     val uiState: StateFlow<LibraryUiState> = combine(
         combine(library.library, library.playlists, library.likedIds, ::Triple),
@@ -68,7 +68,7 @@ class LibraryViewModel @Inject constructor(
         val sort = prefs.librarySort
         LibraryUiState(
             loading = snapshot == null,
-            tab = LibraryTab.entries.firstOrNull { it.name == tabName } ?: LibraryTab.Albums,
+            tab = LibraryTab.entries.firstOrNull { it.name == tabName } ?: LibraryTab.Songs,
             layout = prefs.libraryLayout,
             sort = sort,
             albums = sortAlbums(snapshot?.albums.orEmpty(), sort),
@@ -100,6 +100,13 @@ class LibraryViewModel @Inject constructor(
 
     fun playSong(index: Int) {
         player.play(uiState.value.songs, index, PlaybackContext(PlaybackContextType.Songs, "", ""))
+    }
+
+    fun shuffleSongs() {
+        val songs = uiState.value.songs
+        if (songs.isNotEmpty()) {
+            player.play(songs, 0, PlaybackContext(PlaybackContextType.Songs, "", ""), shuffle = true)
+        }
     }
 
     fun toggleLike(track: Track) {

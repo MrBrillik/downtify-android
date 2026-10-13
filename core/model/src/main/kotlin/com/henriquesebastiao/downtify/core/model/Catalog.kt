@@ -140,6 +140,8 @@ data class ServerJob(
     /** 0–100. */
     val progress: Float,
     val message: String,
+    /** 1-based place among the waiting jobs, null once finished or when the server didn't send one. */
+    val position: Int? = null,
 )
 
 /** "The server is downloading 13 songs · Harbor Nights · 4 of 9", from the queue. */

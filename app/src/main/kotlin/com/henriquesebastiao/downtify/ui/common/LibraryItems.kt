@@ -1,5 +1,7 @@
 package com.henriquesebastiao.downtify.ui.common
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -116,6 +118,7 @@ fun CoverCard(
 }
 
 /** A list row with a cover: albums, artists, playlists in list layout and in search. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CoverRow(
     title: String,
@@ -130,8 +133,19 @@ fun CoverRow(
     trailing: (@Composable () -> Unit)? = null,
 ) {
     ListItem(
-        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = subtitle?.let { { Text(it, maxLines = subtitleLines, overflow = TextOverflow.Ellipsis) } },
+        headlineContent = {
+            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
+        },
+        supportingContent = subtitle?.let {
+            {
+                Text(
+                    it,
+                    maxLines = subtitleLines,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee(),
+                )
+            }
+        },
         leadingContent = {
             CoverArt(
                 url = coverUrl,
@@ -152,12 +166,15 @@ data class TrackActions(
     val onToggleLike: ((Track) -> Unit)? = null,
     val onGoToAlbum: ((Track) -> Unit)? = null,
     val onGoToArtist: ((Track) -> Unit)? = null,
+    val onFindSimilar: ((artist: String, title: String) -> Unit)? = null,
 )
 
 /**
  * A song row. [leading] is its number (albums), its cover (lists) or, when it
- * is the current track, bouncing bars.
+ * is the current track, bouncing bars. Long titles scroll as a marquee so
+ * the full text stays readable.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TrackRow(
     track: Track,
@@ -182,6 +199,7 @@ fun TrackRow(
                 overflow = TextOverflow.Ellipsis,
                 color = highlight,
                 fontWeight = if (isCurrent) FontWeight.SemiBold else null,
+                modifier = Modifier.basicMarquee(),
             )
         },
         supportingContent = {
@@ -194,7 +212,12 @@ fun TrackRow(
                         modifier = Modifier.padding(end = 6.dp).size(14.dp),
                     )
                 }
-                Text(trackSubtitle(track), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    trackSubtitle(track),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee(),
+                )
             }
         },
         leadingContent = {
@@ -271,6 +294,18 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions) {
                         onClick = {
                             open = false
                             go(track)
+                        },
+                    )
+                }
+            }
+            if (track.displayArtist.isNotBlank() && track.displayTitle.isNotBlank()) {
+                actions.onFindSimilar?.let { find ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.similar_find)) },
+                        leadingIcon = { Icon(painterResource(DowntifyIcons.Explore), contentDescription = null) },
+                        onClick = {
+                            open = false
+                            find(track.displayArtist, track.displayTitle)
                         },
                     )
                 }
