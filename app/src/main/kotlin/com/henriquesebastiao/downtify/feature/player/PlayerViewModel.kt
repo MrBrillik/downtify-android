@@ -14,11 +14,13 @@ import com.henriquesebastiao.downtify.core.model.ServerJobStatus
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.CatalogJson
 import com.henriquesebastiao.downtify.core.player.PlayerController
+import com.henriquesebastiao.downtify.core.player.PlayerEvent
 import com.henriquesebastiao.downtify.core.player.PlayerState
 import com.henriquesebastiao.downtify.core.player.PlayingStream
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +47,10 @@ class PlayerViewModel @Inject constructor(
     queue: ServerQueueRepository,
 ) : ViewModel() {
     val state: StateFlow<PlayerState> = player.state
+
+    val hasMedia: StateFlow<Boolean> = player.hasMedia
+
+    val events: SharedFlow<PlayerEvent> = player.events
 
     /**
      * The library track behind the playing stream, once it has been
@@ -90,6 +96,9 @@ class PlayerViewModel @Inject constructor(
     fun toggleShuffle() = player.toggleShuffle()
     fun cycleRepeat() = player.cycleRepeat()
     fun skipTo(index: Int) = player.skipTo(index)
+    fun removeFromQueue(index: Int) = player.removeFromQueue(index)
+    fun clearQueued() = player.clearQueued()
+    fun moveInQueue(from: Int, after: Int, queued: Boolean) = player.moveInQueue(from, after, queued)
     fun dismissError() = player.dismissError()
 
     fun toggleLike() {

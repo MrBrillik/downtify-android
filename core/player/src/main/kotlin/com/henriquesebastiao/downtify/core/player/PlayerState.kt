@@ -6,8 +6,19 @@ import com.henriquesebastiao.downtify.core.model.Track
 
 enum class RepeatMode { Off, All, One }
 
-/** One queue row. */
-data class QueueEntry(val index: Int, val trackId: String, val title: String, val artist: String)
+/**
+ * One queue row. [index] is its place in the player's list (what skipping to
+ * it or removing it takes); [queued] marks a song the user added to the queue.
+ * [artworkUrl] is set only when the item has artwork.
+ */
+data class QueueEntry(
+    val index: Int,
+    val trackId: String,
+    val title: String,
+    val artist: String,
+    val queued: Boolean = false,
+    val artworkUrl: String? = null,
+)
 
 /** A podcast episode playing (or loaded), as its media item describes it. */
 data class PlayingEpisode(
@@ -50,7 +61,8 @@ data class PlayerState(
     val durationMs: Long = 0,
     val shuffle: Boolean = false,
     val repeat: RepeatMode = RepeatMode.Off,
-    val queue: List<QueueEntry> = emptyList(),
+    /** What plays after the current item, in the order it will play (shuffled or not). */
+    val upNext: List<QueueEntry> = emptyList(),
     val currentIndex: Int = -1,
     val context: PlaybackContext? = null,
     /** The quality the current track streams in, once it started. */
@@ -72,6 +84,11 @@ enum class PlaybackError {
     /** A stream answered 404: the server predates `/api/stream/file` — update it. */
     OldServer,
     Other,
+}
+
+/** One-off things the UI tells the user about (a snackbar). */
+sealed interface PlayerEvent {
+    data class AddedToQueue(val title: String) : PlayerEvent
 }
 
 /** Just what lists need to mark the playing row — changes far less often than [PlayerState]. */

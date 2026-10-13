@@ -194,6 +194,8 @@ class SearchViewModel @Inject constructor(
         retries.update { it + 1 }
     }
 
+    fun addToQueue(track: Track) = player.addToQueue(track)
+
     fun playSong(index: Int) {
         player.play(uiState.value.results.songs, index, PlaybackContext(PlaybackContextType.Songs, "", ""))
     }

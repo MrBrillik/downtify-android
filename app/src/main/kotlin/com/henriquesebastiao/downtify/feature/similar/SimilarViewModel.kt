@@ -16,7 +16,6 @@ import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ServerJob
-import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.model.StreamVideo
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.player.NowPlayingRef
@@ -154,7 +153,7 @@ class SimilarViewModel @Inject constructor(
         viewModelScope.launch { followRouteArgs() }
         viewModelScope.launch {
             player.state
-                .map { state -> state.stream?.videoId to state.queue.lastOrNull()?.trackId }
+                .map { state -> state.stream?.videoId to state.upNext.count { !it.queued } }
                 .distinctUntilChanged()
                 .collect { maybeExtend() }
         }
@@ -207,7 +206,7 @@ class SimilarViewModel @Inject constructor(
         val last = songs.value.lastOrNull() ?: return null
         val stream = player.state.value.stream ?: return null
         if (!streamMatches(stream, last)) return null
-        if (!queueEndsAt(last)) return null
+        if (!queueEndsAtCurrent()) return null
         return last
     }
 
@@ -220,15 +219,11 @@ class SimilarViewModel @Inject constructor(
         return id == stream.videoId
     }
 
-    private fun queueEndsAt(song: RemoteSong): Boolean {
-        val tail = player.state.value.queue.lastOrNull() ?: return false
-        val id = StreamVideo.videoIdOf(song)
-        if (id == null) {
-            return tail.title.equals(song.title, ignoreCase = true) &&
-                tail.artist.equals(song.artist, ignoreCase = true)
-        }
-        return tail.trackId == StreamIds.mediaId(id)
-    }
+    /**
+     * Nothing from the list plays after the current song: only songs the
+     * user queued, if any, which the appended page then follows.
+     */
+    private fun queueEndsAtCurrent(): Boolean = player.state.value.upNext.none { !it.queued }
 
     fun onArtistChange(value: String) {
         artist = value

@@ -59,6 +59,7 @@ import com.henriquesebastiao.downtify.feature.player.LyricsSheet
 import com.henriquesebastiao.downtify.ui.common.CoverRow
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.common.PreviewData
+import com.henriquesebastiao.downtify.ui.common.TrackActions
 import com.henriquesebastiao.downtify.ui.common.TrackRow
 import com.henriquesebastiao.downtify.ui.common.albumSubtitle
 import com.henriquesebastiao.downtify.ui.common.artistSubtitle
@@ -114,6 +115,7 @@ fun SearchRoute(
         onQueryChange = viewModel::onQueryChange,
         onFilterChange = viewModel::onFilterChange,
         onPlaySong = viewModel::playSong,
+        trackActions = TrackActions(onAddToQueue = viewModel::addToQueue),
         remote = RemoteActions(
             onRetry = viewModel::retry,
             onPlay = viewModel::playRemote,
@@ -154,6 +156,7 @@ fun SearchScreen(
     onQueryChange: (String) -> Unit,
     onFilterChange: (SearchFilter) -> Unit,
     onPlaySong: (Int) -> Unit,
+    trackActions: TrackActions = TrackActions(),
     modifier: Modifier = Modifier,
     remote: RemoteActions = RemoteActions(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -216,7 +219,7 @@ fun SearchScreen(
                     )
                 }
             }
-            Results(query, state, navigation, onPlaySong, remote)
+            Results(query, state, navigation, onPlaySong, trackActions, remote)
         }
     }
 }
@@ -227,6 +230,7 @@ private fun Results(
     state: SearchUiState,
     navigation: SearchNavigation,
     onPlaySong: (Int) -> Unit,
+    trackActions: TrackActions,
     remote: RemoteActions,
 ) {
     val covers = LocalCoverUrls.current
@@ -291,6 +295,7 @@ private fun Results(
                     coverUrl = covers.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL),
                     isCurrent = track.id == state.currentTrackId,
                     isPlaying = state.isPlaying,
+                    actions = trackActions,
                 )
             }
             if (showServer) serverSection(query, state, navigation, remote, divider = !results.isEmpty)

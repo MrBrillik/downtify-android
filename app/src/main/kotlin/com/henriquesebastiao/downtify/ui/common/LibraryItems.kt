@@ -164,6 +164,8 @@ fun CoverRow(
 /** What a track row's menu can do. */
 data class TrackActions(
     val onToggleLike: ((Track) -> Unit)? = null,
+    /** Also turns on swipe-right-to-queue on the row. */
+    val onAddToQueue: ((Track) -> Unit)? = null,
     val onGoToAlbum: ((Track) -> Unit)? = null,
     val onGoToArtist: ((Track) -> Unit)? = null,
     val onFindSimilar: ((artist: String, title: String) -> Unit)? = null,
@@ -189,6 +191,40 @@ fun TrackRow(
     downloaded: Boolean = false,
     actions: TrackActions = TrackActions(),
     containerColor: Color = Color.Transparent,
+) {
+    val addToQueue = actions.onAddToQueue
+    if (addToQueue != null) {
+        // Opaque while it slides, so the swipe's color shows only beside it.
+        val opaque = if (containerColor == Color.Transparent) MaterialTheme.colorScheme.surface else containerColor
+        SwipeToQueue(onAddToQueue = { addToQueue(track) }, modifier = modifier) {
+            TrackListItem(
+                track, onClick, Modifier, number, coverUrl, showCover, isCurrent, isPlaying, isLiked, downloaded,
+                actions, opaque,
+            )
+        }
+    } else {
+        TrackListItem(
+            track, onClick, modifier, number, coverUrl, showCover, isCurrent, isPlaying, isLiked, downloaded,
+            actions, containerColor,
+        )
+    }
+}
+
+@Suppress("LongParameterList")
+@Composable
+private fun TrackListItem(
+    track: Track,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    number: Int?,
+    coverUrl: String?,
+    showCover: Boolean,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isLiked: Boolean,
+    downloaded: Boolean,
+    actions: TrackActions,
+    containerColor: Color,
 ) {
     val highlight = if (isCurrent) MaterialTheme.colorScheme.primary else Color.Unspecified
     ListItem(
@@ -259,6 +295,16 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions) {
             )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            actions.onAddToQueue?.let { add ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.track_add_to_queue)) },
+                    leadingIcon = { Icon(painterResource(DowntifyIcons.AddToQueue), contentDescription = null) },
+                    onClick = {
+                        open = false
+                        add(track)
+                    },
+                )
+            }
             actions.onToggleLike?.let { toggle ->
                 DropdownMenuItem(
                     text = { Text(stringResource(if (isLiked) R.string.track_unlike else R.string.track_like)) },
