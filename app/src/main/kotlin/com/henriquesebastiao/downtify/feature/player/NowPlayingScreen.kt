@@ -531,7 +531,7 @@ private fun SeekBar(state: PlayerState, colors: CoverColors, onSeek: (Long) -> U
 }
 
 @Composable
-private fun Controls(state: PlayerState, colors: CoverColors, actions: NowPlayingActions) {
+internal fun Controls(state: PlayerState, colors: CoverColors, actions: NowPlayingActions) {
     val toggleColors = iconToggleButtonColors(
         contentColor = colors.onSurfaceVariant,
         checkedContentColor = MaterialTheme.colorScheme.primary,

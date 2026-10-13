@@ -110,6 +110,8 @@
     <string name="track_go_to_album">Go to album</string>
     <string name="track_go_to_artist">Go to artist</string>
     <string name="track_playing">Playing</string>
+    <string name="track_add_to_queue">Add to queue</string>
+    <string name="track_added_to_queue">Added to queue</string>
     <string name="artist_songs">Songs</string>
     <string name="artist_albums">Albums</string>
 
@@ -329,7 +331,18 @@
     <string name="player_close">Close Now playing</string>
     <string name="player_open">Open Now playing</string>
     <string name="player_lyrics">Lyrics</string>
-    <string name="player_queue">Up next</string>
+    <string name="player_queue">Queue</string>
+    <string name="player_queue_close">Close queue</string>
+    <string name="player_queue_now_playing">Now playing</string>
+    <string name="player_queue_next_in_queue">Next in queue</string>
+    <string name="player_queue_next_from">Next from: %1$s</string>
+    <string name="player_queue_next_up">Next up</string>
+    <string name="player_queue_clear">Clear queue</string>
+    <string name="player_queue_empty">Nothing plays after this song.</string>
+    <string name="player_queue_remove">Remove from queue</string>
+    <string name="player_queue_reorder">Drag to reorder</string>
+    <string name="player_queue_move_up">Move up</string>
+    <string name="player_queue_move_down">Move down</string>
     <string name="player_like">Add to Liked songs</string>
     <string name="player_source_stream">Streaming from %1$s</string>
     <string name="player_unlike">Remove from Liked songs</string>

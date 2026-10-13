@@ -12,12 +12,14 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -27,10 +29,12 @@ import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
 import com.henriquesebastiao.downtify.core.data.podcasts.PodcastsRepository
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
+import com.henriquesebastiao.downtify.core.model.PlayQueue
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -79,6 +83,8 @@ class PlaybackService : MediaSessionService() {
     private var episodes: EpisodeProgressTracker? = null
     private var prefetch: StreamPrefetchTracker? = null
     private val likeCommand = SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)
+    private val addToQueueCommand = SessionCommand(ACTION_ADD_TO_QUEUE, Bundle.EMPTY)
+    private val moveInQueueCommand = SessionCommand(ACTION_MOVE_IN_QUEUE, Bundle.EMPTY)
 
     override fun onCreate() {
         super.onCreate()
@@ -185,6 +191,50 @@ class PlaybackService : MediaSessionService() {
             .launchIn(scope)
     }
 
+    /**
+     * Puts [item] after the current song and anything queued before it, ahead of the rest of
+     * the album or playlist — in the shuffled order too, where ExoPlayer alone would put it
+     * at a random spot. With nothing loaded it becomes the queue, paused.
+     */
+    private fun addToQueue(player: ExoPlayer, item: MediaItem) {
+        if (player.mediaItemCount == 0) {
+            player.setMediaItem(item)
+            player.prepare()
+            return
+        }
+        val anchor = PlayQueue.anchor(PlayOrder.fromCurrent(player)) {
+            MediaItems.isQueued(player.getMediaItemAt(it))
+        } ?: return
+        if (player.shuffleModeEnabled) {
+            val shuffled = PlayOrder.shuffled(player.currentTimeline)
+            val newIndex = player.mediaItemCount
+            player.addMediaItem(item)
+            val order = PlayQueue.shuffleOrderWith(shuffled, anchor, newIndex)
+            player.setShuffleOrder(DefaultShuffleOrder(order.toIntArray(), Random.nextLong()))
+        } else {
+            player.addMediaItem(anchor + 1, item)
+        }
+    }
+
+    /**
+     * Moves the item at [from] to play right after the item at [after] (indices in the
+     * player's list), marked as queued or not. With shuffle on only the shuffled order
+     * changes; otherwise the item moves in the list.
+     */
+    private fun moveInQueue(player: ExoPlayer, from: Int, after: Int, queued: Boolean) {
+        val count = player.mediaItemCount
+        if (from !in 0 until count || after !in 0 until count || from == after) return
+        if (from == player.currentMediaItemIndex) return
+        val item = player.getMediaItemAt(from)
+        if (MediaItems.isQueued(item) != queued) player.replaceMediaItem(from, MediaItems.withQueued(item, queued))
+        if (player.shuffleModeEnabled) {
+            val order = PlayQueue.moveAfter(PlayOrder.shuffled(player.currentTimeline), from, after)
+            player.setShuffleOrder(DefaultShuffleOrder(order.toIntArray(), Random.nextLong()))
+        } else {
+            player.moveMediaItem(from, PlayQueue.moveTarget(from, after))
+        }
+    }
+
     private fun likeButton(liked: Boolean): CommandButton =
         CommandButton.Builder(if (liked) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
             .setDisplayName(getString(if (liked) R.string.player_unlike else R.string.player_like))
@@ -198,7 +248,11 @@ class PlaybackService : MediaSessionService() {
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult = MediaSession.ConnectionResult.AcceptedResultBuilder(session)
             .setAvailableSessionCommands(
-                MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(likeCommand).build(),
+                MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                    .add(likeCommand)
+                    .add(addToQueueCommand)
+                    .add(moveInQueueCommand)
+                    .build(),
             )
             .build()
 
@@ -214,6 +268,24 @@ class PlaybackService : MediaSessionService() {
                     val liked = id in library.likedIds.value
                     scope.launch { library.setLiked(id, !liked) }
                 }
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            if (customCommand.customAction == ACTION_ADD_TO_QUEUE) {
+                val track = args.getString(EXTRA_TRACK_ID)?.let { library.library.value?.byId?.get(it) }
+                    ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+                addToQueue(
+                    session.player as ExoPlayer,
+                    MediaItems.from(track, sessions.current?.baseUrl, queued = true),
+                )
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            if (customCommand.customAction == ACTION_MOVE_IN_QUEUE) {
+                moveInQueue(
+                    session.player as ExoPlayer,
+                    from = args.getInt(EXTRA_FROM, C.INDEX_UNSET),
+                    after = args.getInt(EXTRA_AFTER, C.INDEX_UNSET),
+                    queued = args.getBoolean(EXTRA_QUEUED),
+                )
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }
             return super.onCustomCommand(session, controller, customCommand, args)
@@ -240,7 +312,7 @@ class PlaybackService : MediaSessionService() {
                 StreamIds.videoIdOf(item.mediaId)?.let { videoId ->
                     return@mapNotNull item.buildUpon().setUri(MediaItems.streamUri(videoId)).build()
                 }
-                snapshot?.byId?.get(item.mediaId)?.let { MediaItems.from(it, baseUrl) }
+                snapshot?.byId?.get(item.mediaId)?.let { MediaItems.from(it, baseUrl, MediaItems.isQueued(item)) }
                     ?: item.takeIf {
                         it.mediaId.isNotEmpty()
                     }?.let { it.buildUpon().setUri(MediaItems.uriFor(it.mediaId)).build() }
@@ -251,6 +323,12 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val ACTION_TOGGLE_LIKE = "com.henriquesebastiao.downtify.TOGGLE_LIKE"
+        const val ACTION_ADD_TO_QUEUE = "com.henriquesebastiao.downtify.ADD_TO_QUEUE"
+        const val ACTION_MOVE_IN_QUEUE = "com.henriquesebastiao.downtify.MOVE_IN_QUEUE"
+        const val EXTRA_TRACK_ID = "track_id"
+        const val EXTRA_FROM = "from"
+        const val EXTRA_AFTER = "after"
+        const val EXTRA_QUEUED = "queued"
         const val SKIP_BACK_MS = 10_000L
         const val SKIP_FORWARD_MS = 30_000L
     }

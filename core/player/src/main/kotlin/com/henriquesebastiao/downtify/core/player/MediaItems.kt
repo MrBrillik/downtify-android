@@ -29,6 +29,7 @@ object MediaItems {
     private const val EXTRA_RAW = "downtify.raw_song"
     private const val EXTRA_CONTEXT_TYPE = "downtify.context_type"
     private const val EXTRA_CONTEXT_ID = "downtify.context_id"
+    private const val EXTRA_QUEUED = "downtify.queued"
 
     fun streamUri(videoId: String): Uri =
         Uri.Builder().scheme(SCHEME).authority(STREAM_HOST).appendPath(videoId).build()
@@ -44,7 +45,8 @@ object MediaItems {
 
     fun trackIdOf(uri: Uri): String? = if (uri.scheme == SCHEME && uri.authority == HOST) uri.lastPathSegment else null
 
-    fun from(track: Track, baseUrl: String?): MediaItem = MediaItem.Builder()
+    /** [queued]: the user added it with "Add to queue" (it plays before the rest of the context). */
+    fun from(track: Track, baseUrl: String?, queued: Boolean = false): MediaItem = MediaItem.Builder()
         .setMediaId(track.id)
         .setUri(uriFor(track.id))
         .setMediaMetadata(
@@ -65,9 +67,19 @@ object MediaItems {
                 .setIsPlayable(true)
                 .setIsBrowsable(false)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                .apply { if (queued) setExtras(Bundle().apply { putBoolean(EXTRA_QUEUED, true) }) }
                 .build(),
         )
         .build()
+
+    /** [item] with its "Add to queue" mark set to [queued]. */
+    fun withQueued(item: MediaItem, queued: Boolean): MediaItem {
+        val extras = Bundle(item.mediaMetadata.extras ?: Bundle.EMPTY).apply { putBoolean(EXTRA_QUEUED, queued) }
+        return item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(extras).build()).build()
+    }
+
+    /** Whether the user added [item] with "Add to queue". Survives the trip to the service (metadata does). */
+    fun isQueued(item: MediaItem): Boolean = item.mediaMetadata.extras?.getBoolean(EXTRA_QUEUED) == true
 
     /**
      * A downloaded podcast episode, played from the server's file (`/downloads/...`). The address also

@@ -49,6 +49,10 @@ object DowntifyIcons {
 
     @DrawableRes val Queue = R.drawable.ic_queue_music
 
+    @DrawableRes val AddToQueue = R.drawable.ic_playlist_add
+
+    @DrawableRes val DragHandle = R.drawable.ic_drag_handle
+
     @DrawableRes val QrCode = R.drawable.ic_qr_code_scanner
 
     @DrawableRes val Server = R.drawable.ic_dns

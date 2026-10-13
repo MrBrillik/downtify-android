@@ -58,29 +58,43 @@ class LibraryViewModel @Inject constructor(
 
     private val tab = savedState.getStateFlow(KEY_TAB, LibraryTab.Songs.name)
 
-    val uiState: StateFlow<LibraryUiState> = combine(
-        combine(library.library, library.playlists, library.likedIds, ::Triple),
+    /**
+     * The sorted lists, rebuilt only when the library, playlists, likes or settings change.
+     * Kept apart from the playing track: sorting thousands of songs on every play/pause was
+     * the costliest thing this screen did.
+     */
+    private val content = combine(
+        library.library,
+        library.playlists,
+        library.likedIds,
         settings.settings,
-        tab,
-        library.syncStatus,
-        player.nowPlaying,
-    ) { (snapshot, playlists, liked), prefs, tabName, syncStatus, playing ->
+    ) { snapshot, playlists, liked, prefs ->
         val sort = prefs.librarySort
         LibraryUiState(
             loading = snapshot == null,
-            tab = LibraryTab.entries.firstOrNull { it.name == tabName } ?: LibraryTab.Songs,
             layout = prefs.libraryLayout,
             sort = sort,
             albums = sortAlbums(snapshot?.albums.orEmpty(), sort),
             artists = sortArtists(snapshot?.artists.orEmpty(), sort),
             playlists = playlistItems(snapshot, playlists, liked),
             songs = sortSongs(snapshot?.tracks.orEmpty(), sort),
-            refreshing = syncStatus == SyncStatus.Syncing,
-            currentTrackId = playing.trackId,
-            isPlaying = playing.isPlaying,
             likedIds = liked.toSet(),
         )
     }.flowOn(Dispatchers.Default)
+
+    val uiState: StateFlow<LibraryUiState> = combine(
+        content,
+        tab,
+        library.syncStatus,
+        player.nowPlaying,
+    ) { content, tabName, syncStatus, playing ->
+        content.copy(
+            tab = LibraryTab.entries.firstOrNull { it.name == tabName } ?: LibraryTab.Songs,
+            refreshing = syncStatus == SyncStatus.Syncing,
+            currentTrackId = playing.trackId,
+            isPlaying = playing.isPlaying,
+        )
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), LibraryUiState())
 
     fun selectTab(value: LibraryTab) {
@@ -108,6 +122,8 @@ class LibraryViewModel @Inject constructor(
             player.play(songs, 0, PlaybackContext(PlaybackContextType.Songs, "", ""), shuffle = true)
         }
     }
+
+    fun addToQueue(track: Track) = player.addToQueue(track)
 
     fun toggleLike(track: Track) {
         viewModelScope.launch { library.setLiked(track.id, track.id !in uiState.value.likedIds) }

@@ -91,6 +91,7 @@ fun LibraryRoute(
         onPlaySong = viewModel::playSong,
         trackActions = TrackActions(
             onToggleLike = viewModel::toggleLike,
+            onAddToQueue = viewModel::addToQueue,
             onGoToAlbum = { navigation.onAlbum(it.albumId) },
             onGoToArtist = { navigation.onArtist(it.artistId) },
             onFindSimilar = { artist, title -> navigation.onSimilar(artist, title) },

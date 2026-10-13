@@ -68,6 +68,8 @@ class ArtistViewModel @Inject constructor(
 
     fun shuffle() = play(0, shuffle = true)
 
+    fun addToQueue(track: Track) = player.addToQueue(track)
+
     fun toggleLike(track: Track) {
         viewModelScope.launch { library.setLiked(track.id, track.id !in uiState.value.likedIds) }
     }
