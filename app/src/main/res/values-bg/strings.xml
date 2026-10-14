@@ -290,7 +290,6 @@
     <string name="settings_unreachable">Недостъпен</string>
     <string name="settings_checking">Проверка…</string>
     <string name="settings_different_server">Друг сървър</string>
-    <string name="settings_server_subtitle">%1$s · Downtify %2$s</string>
     <string name="settings_change_server">Смяна на сървъра</string>
     <string name="settings_open_web">Настройки на сървъра</string>
     <string name="settings_playback">Възпроизвеждане</string>

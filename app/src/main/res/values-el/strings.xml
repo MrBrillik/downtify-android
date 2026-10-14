@@ -290,7 +290,6 @@
     <string name="settings_unreachable">Μη προσβάσιμο</string>
     <string name="settings_checking">Έλεγχος…</string>
     <string name="settings_different_server">Διαφορετικός διακομιστής</string>
-    <string name="settings_server_subtitle">%1$s · Downtify %2$s</string>
     <string name="settings_change_server">Αλλαγή διακομιστή</string>
     <string name="settings_open_web">Ρυθμίσεις διακομιστή</string>
     <string name="settings_playback">Αναπαραγωγή</string>

@@ -290,7 +290,6 @@
     <string name="settings_unreachable">Ulaşılamıyor</string>
     <string name="settings_checking">Kontrol ediliyor…</string>
     <string name="settings_different_server">Farklı sunucu</string>
-    <string name="settings_server_subtitle">%1$s · Downtify %2$s</string>
     <string name="settings_change_server">Sunucuyu değiştir</string>
     <string name="settings_open_web">Sunucu ayarları</string>
     <string name="settings_playback">Oynatma</string>

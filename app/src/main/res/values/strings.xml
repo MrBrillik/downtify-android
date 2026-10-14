@@ -278,6 +278,7 @@
     <string name="collection_remove_message">%1$s stays in your library and streams from the server.</string>
     <string name="collection_remove_confirm">Remove</string>
     <string name="settings_downloads">Downloads</string>
+    <string name="settings_server_version" translatable="false">Downtify %1$s</string>
     <string name="settings_signed_in_as">Signed in as %1$s</string>
     <string name="settings_download_wifi_only">Download on Wi-Fi only</string>
     <string name="settings_download_wifi_only_body">Offline copies wait for Wi-Fi</string>
@@ -291,7 +292,6 @@
     <string name="settings_unreachable">Unreachable</string>
     <string name="settings_checking">Checking…</string>
     <string name="settings_different_server">Different server</string>
-    <string name="settings_server_subtitle">%1$s · Downtify %2$s</string>
     <string name="settings_change_server">Change server</string>
     <string name="settings_open_web">Server settings</string>
     <string name="settings_playback">Playback</string>

@@ -7,6 +7,8 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -253,6 +255,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ServerCard(state: SettingsUiState, onChangeServer: () -> Unit, onOpenWeb: () -> Unit) {
     Card(
@@ -260,37 +263,45 @@ private fun ServerCard(state: SettingsUiState, onChangeServer: () -> Unit, onOpe
         shape = MaterialTheme.shapes.large,
         modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.screen, vertical = Spacing.sm),
     ) {
-        Column(Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 DowntifyLogo(size = 40.dp)
                 Column(Modifier.weight(1f)) {
                     Text(state.serverName, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (state.version.isBlank()) {
-                            state.address
-                        } else {
-                            stringResource(
-                                R.string.settings_server_subtitle,
-                                state.address,
-                                state.version,
-                            )
-                        },
+                        state.address,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (state.username.isNotBlank()) {
-                        Text(
-                            stringResource(R.string.settings_signed_in_as, state.username),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
                 }
-                ConnectionPill(state.connection)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                OutlinedButton(onClick = onChangeServer) { Text(stringResource(R.string.settings_change_server)) }
-                TextButton(onClick = onOpenWeb) { Text(stringResource(R.string.settings_open_web)) }
+            // Status, version and account: one line that wraps between items, never inside one.
+            val details = listOfNotNull(
+                state.version.takeIf { it.isNotBlank() }?.let { stringResource(R.string.settings_server_version, it) },
+                state.username.takeIf { it.isNotBlank() }?.let { stringResource(R.string.settings_signed_in_as, it) },
+            ).joinToString(" · ")
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                ConnectionPill(state.connection)
+                if (details.isNotEmpty()) {
+                    Text(
+                        details,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            // Stacked: the labels are long in some languages and would wrap inside a half-width button.
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                OutlinedButton(onClick = onChangeServer, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.settings_change_server))
+                }
+                OutlinedButton(onClick = onOpenWeb, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.settings_open_web))
+                }
             }
         }
     }

@@ -299,7 +299,6 @@
     <string name="settings_unreachable">Inaccesible</string>
     <string name="settings_checking">Comprobando…</string>
     <string name="settings_different_server">Otro servidor</string>
-    <string name="settings_server_subtitle">%1$s · Downtify %2$s</string>
     <string name="settings_change_server">Cambiar de servidor</string>
     <string name="settings_open_web">Ajustes del servidor</string>
     <string name="settings_playback">Reproducción</string>

@@ -290,7 +290,6 @@
     <string name="settings_unreachable">Nem elérhető</string>
     <string name="settings_checking">Ellenőrzés…</string>
     <string name="settings_different_server">Másik szerver</string>
-    <string name="settings_server_subtitle">%1$s · Downtify %2$s</string>
     <string name="settings_change_server">Szerver váltása</string>
     <string name="settings_open_web">Szerverbeállítások</string>
     <string name="settings_playback">Lejátszás</string>

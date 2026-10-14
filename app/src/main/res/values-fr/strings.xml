@@ -299,7 +299,6 @@
     <string name="settings_unreachable">Injoignable</string>
     <string name="settings_checking">Vérification…</string>
     <string name="settings_different_server">Autre serveur</string>
-    <string name="settings_server_subtitle">%1$s · Downtify %2$s</string>
     <string name="settings_change_server">Changer de serveur</string>
     <string name="settings_open_web">Paramètres du serveur</string>
     <string name="settings_playback">Lecture</string>
