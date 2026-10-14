@@ -60,7 +60,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.CoverArt
@@ -533,24 +532,13 @@ private fun SeekBar(state: PlayerState, colors: CoverColors, onSeek: (Long) -> U
             },
             colors = sliderColors,
             interactionSource = interactionSource,
-            // A thin track, as in other music players. Material 3 draws the played part only once
-            // it's wider than the gap beside the thumb plus the track's end radius (half its
-            // height): with the default 16 dp track that hid the first seconds of every song.
-            // Without the gap and at 4 dp, what's left stays under the thumb.
+            // Material 3's own track (16 dp, with the gap and the stop dot). Only the thumb is
+            // drawn by hand: the 1.5 one shrinks to half its width while pressed.
             thumb = {
-                SliderDefaults.Thumb(
-                    interactionSource = interactionSource,
-                    colors = sliderColors,
-                    thumbSize = DpSize(SEEK_THUMB_WIDTH, SEEK_THUMB_HEIGHT),
-                )
-            },
-            track = { sliderState ->
-                SliderDefaults.Track(
-                    sliderState = sliderState,
-                    colors = sliderColors,
-                    thumbTrackGapSize = 0.dp,
-                    drawStopIndicator = null,
-                    modifier = Modifier.height(SEEK_TRACK_HEIGHT),
+                Box(
+                    Modifier
+                        .size(SEEK_THUMB_WIDTH, SEEK_THUMB_HEIGHT)
+                        .background(sliderColors.thumbColor, RoundedCornerShape(percent = 50)),
                 )
             },
             modifier = Modifier.semantics {
@@ -719,6 +707,5 @@ private fun NowPlayingPreview() {
     }
 }
 
-private val SEEK_TRACK_HEIGHT = 4.dp
 private val SEEK_THUMB_WIDTH = 4.dp
-private val SEEK_THUMB_HEIGHT = 20.dp
+private val SEEK_THUMB_HEIGHT = 44.dp

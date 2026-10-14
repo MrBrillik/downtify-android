@@ -42,8 +42,8 @@ data class GroupedRow(
 )
 
 /**
- * A group of rows as Material 3 Expressive draws a grouped list: each row its own rounded surface,
- * the first and last with large outer corners, with a small gap between them.
+ * A group of rows as Material 3 Expressive draws a grouped list: each row its own surface, the first
+ * and last with large outer corners, with a small gap between them. Rows never change shape or tint.
  */
 @Composable
 fun GroupedList(rows: List<GroupedRow>, modifier: Modifier = Modifier) {
@@ -58,8 +58,26 @@ fun GroupedList(rows: List<GroupedRow>, modifier: Modifier = Modifier) {
 /** A row that is the [index]th of [count] in its group, which decides its corners. */
 @Composable
 fun GroupedListItem(row: GroupedRow, index: Int, count: Int, modifier: Modifier = Modifier) {
-    val shapes = ListItemDefaults.segmentedShapes(index = index, count = count)
-    val colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    // A row looks the same on, off, pressed or focused: the stock item rounds a checked row all the
+    // way and tints it, which made the switches stand out from the rest of the group.
+    val shapes = ListItemDefaults.segmentedShapes(index = index, count = count).let {
+        it.copy(
+            selectedShape = it.shape,
+            pressedShape = it.shape,
+            focusedShape = it.shape,
+            hoveredShape = it.shape,
+            draggedShape = it.shape,
+        )
+    }
+    val scheme = MaterialTheme.colorScheme
+    val colors = ListItemDefaults.segmentedColors(
+        containerColor = scheme.surfaceContainer,
+        selectedContainerColor = scheme.surfaceContainer,
+        selectedContentColor = scheme.onSurface,
+        selectedLeadingContentColor = scheme.onSurfaceVariant,
+        selectedTrailingContentColor = scheme.onSurfaceVariant,
+        selectedSupportingContentColor = scheme.onSurfaceVariant,
+    )
     val leading: @Composable (() -> Unit)? = row.icon?.let { icon ->
         { Icon(painterResource(icon), contentDescription = null) }
     }
