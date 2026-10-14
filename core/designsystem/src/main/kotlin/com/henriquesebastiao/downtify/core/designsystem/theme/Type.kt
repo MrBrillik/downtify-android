@@ -3,6 +3,8 @@ package com.henriquesebastiao.downtify.core.designsystem.theme
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
@@ -29,12 +31,24 @@ private fun family(name: String, vararg weights: FontWeight) =
 
 val Sora = family("Sora", FontWeight.Normal, FontWeight.SemiBold, FontWeight.Bold)
 val DmSans = family("DM Sans", FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold)
-val GoogleSansFlex = family(
-    "Google Sans Flex",
-    FontWeight.Normal,
-    FontWeight.Medium,
-    FontWeight.SemiBold,
-    FontWeight.Bold,
+
+/** Google Sans Flex's roundness axis, 0 (square ends) to 100 (fully rounded). */
+private const val ROUNDNESS_AXIS = "ROND"
+
+// The rounded cut of Google Sans Flex, the one on Pixel phones: the variable font's ROND axis at 100.
+val GoogleSansFlex = FontFamily(
+    listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map { weight ->
+        Font(
+            googleFont = GoogleFont("Google Sans Flex"),
+            fontProvider = provider,
+            weight = weight,
+            variationSettings = FontVariation.Settings(
+                weight,
+                FontStyle.Normal,
+                FontVariation.Setting(ROUNDNESS_AXIS, 100f),
+            ),
+        )
+    },
 )
 
 private val base = Typography()

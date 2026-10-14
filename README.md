@@ -16,7 +16,7 @@ Status: **phase 4** (connect & pair, library sync, browsing, streaming, play rep
 ## Languages, fonts and theme
 
 - **Languages:** the same eight as the Downtify web app — Bulgarian, English, French, Greek, Hungarian, Portuguese (Brazil), Spanish and Turkish. The app follows the phone's language and falls back to English when it isn't one of these. On Android 13+ the language can also be set per app (**Settings › Appearance › Language** opens Android's own screen for it).
-- **Fonts** (Settings › Appearance › Font): Downtify's own (Sora and DM Sans), the system font, or Google Sans Flex. Google fonts are fetched by Play services; without it the system font is used.
+- **Fonts** (Settings › Appearance › Font): Downtify's own (Sora and DM Sans), the system font, or Google Sans Flex (its rounded cut, as on Pixel phones). Google fonts are fetched by Play services; without it the system font is used.
 - **Theme:** follow system, dark or light, optional wallpaper colors (Android 12+) and **Pure black** for OLED screens in the dark theme.
 - **About** (Settings › About Downtify): version (tap to copy), bug reports, source code, the GPL-3.0 license, the terms and disclaimer, and ways to support the project.
 
