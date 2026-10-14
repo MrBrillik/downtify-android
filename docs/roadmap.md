@@ -78,6 +78,6 @@ Left for later:
 
 ## Ongoing
 
-- Translations (the web UI ships 8 languages; strings are already in `strings.xml`).
+- Native-speaker review of the translations (bg, el, es, fr, hu, pt-BR, tr were written without one).
 - Screenshot tests for the main screens, dark and light.
 - Baseline profile for startup and scrolling.

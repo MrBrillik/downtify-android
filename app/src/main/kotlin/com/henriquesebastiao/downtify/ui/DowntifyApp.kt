@@ -59,6 +59,8 @@ import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.RecentContext
 import com.henriquesebastiao.downtify.core.player.PlayerEvent
+import com.henriquesebastiao.downtify.feature.about.AboutRoute
+import com.henriquesebastiao.downtify.feature.about.LicenseRoute
 import com.henriquesebastiao.downtify.feature.artist.ArtistRoute
 import com.henriquesebastiao.downtify.feature.collection.CollectionRoute
 import com.henriquesebastiao.downtify.feature.connect.ConnectRoute
@@ -82,12 +84,14 @@ import com.henriquesebastiao.downtify.feature.settings.SettingsRoute
 import com.henriquesebastiao.downtify.feature.similar.SimilarRoute as SimilarScreenRoute
 import com.henriquesebastiao.downtify.ui.common.CoverUrls
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
+import com.henriquesebastiao.downtify.ui.navigation.AboutRoute as AboutDestination
 import com.henriquesebastiao.downtify.ui.navigation.AlbumRoute
 import com.henriquesebastiao.downtify.ui.navigation.ArtistRoute as ArtistDestination
 import com.henriquesebastiao.downtify.ui.navigation.DiscoverRoute as DiscoverDestination
 import com.henriquesebastiao.downtify.ui.navigation.DownloadsRoute as DownloadsDestination
 import com.henriquesebastiao.downtify.ui.navigation.HomeRoute as HomeDestination
 import com.henriquesebastiao.downtify.ui.navigation.LibraryRoute as LibraryDestination
+import com.henriquesebastiao.downtify.ui.navigation.LicenseRoute as LicenseDestination
 import com.henriquesebastiao.downtify.ui.navigation.LikedRoute
 import com.henriquesebastiao.downtify.ui.navigation.PlaylistRoute
 import com.henriquesebastiao.downtify.ui.navigation.PodcastsRoute as PodcastsDestination
@@ -146,7 +150,9 @@ private fun MainShell() {
     }
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
     var currentTab by rememberSaveable { mutableStateOf(TopLevelDestination.Home) }
-    val onSettings = destination?.hasRoute<SettingsDestination>() == true
+    val onSettings = destination?.hasRoute<SettingsDestination>() == true ||
+        destination?.hasRoute<AboutDestination>() == true ||
+        destination?.hasRoute<LicenseDestination>() == true
 
     TopLevelDestination.entries.firstOrNull { destination?.hasRoute(it.route::class) == true }?.let { currentTab = it }
     RequestNotificationPermission()
@@ -301,7 +307,19 @@ private fun AppNavHost(navController: NavHostController) {
                 },
             )
         }
-        composable<SettingsDestination> { SettingsRoute(onBack = navController::popBackStack) }
+        composable<SettingsDestination> {
+            SettingsRoute(
+                onBack = navController::popBackStack,
+                onOpenAbout = { navController.navigate(AboutDestination) },
+            )
+        }
+        composable<AboutDestination> {
+            AboutRoute(
+                onBack = navController::popBackStack,
+                onOpenLicense = { navController.navigate(LicenseDestination) },
+            )
+        }
+        composable<LicenseDestination> { LicenseRoute(onBack = navController::popBackStack) }
         composable<AlbumRoute> {
             CollectionRoute(onBack = navController::popBackStack, onArtist = toArtist, onAlbum = toAlbum)
         }

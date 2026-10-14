@@ -366,4 +366,87 @@
     <string name="player_error_old_server">The server is too old for streaming — update Downtify on the server.</string>
     <string name="player_error_other">This song couldn\'t be played.</string>
     <string name="player_notifications_rationale">Allow notifications to control playback from the lock screen and the notification shade.</string>
+
+    <!-- Settings: appearance, language, about -->
+    <string name="action_close">Close</string>
+    <string name="settings_server">Server</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_summary">%1$s · set in Android\'s app language settings</string>
+    <string name="settings_amoled">Pure black</string>
+    <string name="settings_amoled_body">True black in the dark theme. Saves power on OLED screens.</string>
+    <string name="settings_font">Font</string>
+    <string name="settings_font_downtify">Downtify</string>
+    <string name="settings_font_system">System font</string>
+    <string name="settings_font_google_sans_flex" translatable="false">Google Sans Flex</string>
+    <string name="settings_about_entry">About Downtify</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_tagline">The official Android client for your self-hosted Downtify server.</string>
+    <string name="about_report_bug">Report a bug</string>
+    <string name="about_report_bug_body">Open an issue on GitHub</string>
+    <string name="about_version">Version</string>
+    <string name="about_version_value">%1$s (%2$d)</string>
+    <string name="about_version_copied">Version copied</string>
+    <string name="about_source">Source code</string>
+    <string name="about_source_body">See the project on GitHub</string>
+    <string name="about_license">License</string>
+    <string name="about_terms">Terms and disclaimer</string>
+    <string name="about_terms_body">Terms of use and the developers\' disclaimer</string>
+    <string name="about_donate">Support the project</string>
+    <string name="about_donate_body">Buy the developer a coffee or sponsor on GitHub</string>
+
+    <!-- Support sheet -->
+    <string name="donate_title">Support Downtify</string>
+    <string name="donate_body">Downtify for Android is free and open source, built in spare time. If it\'s useful to you, you can help keep it going. It\'s never required, and always appreciated.</string>
+    <string name="donate_buy_me_a_coffee" translatable="false">Buy Me a Coffee</string>
+    <string name="donate_buy_me_a_coffee_body">A one-time coffee for the developer</string>
+    <string name="donate_github_sponsors" translatable="false">GitHub Sponsors</string>
+    <string name="donate_github_sponsors_body">Sponsor the work on GitHub</string>
+
+    <!-- Terms and disclaimer sheet -->
+    <string name="terms_title">Terms and disclaimer</string>
+    <string name="terms_use_title">What this app is</string>
+    <string name="terms_use_body">Downtify for Android is a free, open-source client for Downtify, a music server you run yourself. It plays and manages the music on your own server. It is not a music service and it doesn\'t host any music.</string>
+    <string name="terms_responsibility_title">Your responsibility</string>
+    <string name="terms_responsibility_body">You are responsible for the music you search for, download, store and play with Downtify, and for following the copyright laws and the terms of the services involved where you live. Downtify does not support the unauthorized downloading of copyrighted material. Use it only with music you have the right to use.</string>
+    <string name="terms_affiliation_title">No affiliation</string>
+    <string name="terms_affiliation_body">Downtify is not affiliated with, endorsed by or sponsored by Spotify, YouTube, YouTube Music, Deezer, Soulseek or any other service it can find music, previews or artwork through. Their names and logos belong to their owners.</string>
+    <string name="terms_warranty_title">No warranty, no liability</string>
+    <string name="terms_warranty_body">The app is provided \"as is\", without warranty of any kind, express or implied, including fitness for a particular purpose. The developers are not liable for any claim, damage, loss of data or legal consequence arising from using it, or from what you do with it. See the license for the full terms.</string>
+    <string name="terms_privacy_title">Your data</string>
+    <string name="terms_privacy_body">The app has no ads, analytics or tracking, and sends nothing to its developers. It talks to the server you paired it with. Previews, covers, podcast artwork and downloadable fonts come from third-party hosts (such as Spotify, Deezer, podcast publishers and Google), which can see your IP address when you use them. The device token that pairs the phone with your server is kept encrypted on the phone.</string>
+
+    <!-- License screen -->
+    <string name="license_title">License</string>
+    <string name="license_name" translatable="false">GNU General Public License v3.0</string>
+    <string name="license_spdx" translatable="false">GPL-3.0</string>
+    <string name="license_intro">Downtify for Android is free software. You can use, study, share and change it under the terms of the GNU General Public License, version 3, as published by the Free Software Foundation. In short:</string>
+    <string name="license_permissions">Permissions</string>
+    <string name="license_conditions">Conditions</string>
+    <string name="license_limitations">Limitations</string>
+    <string name="license_permission_commercial">Commercial use</string>
+    <string name="license_permission_commercial_body">You can use the software and its source code for commercial purposes.</string>
+    <string name="license_permission_modification">Modification</string>
+    <string name="license_permission_modification_body">You can change the software.</string>
+    <string name="license_permission_distribution">Distribution</string>
+    <string name="license_permission_distribution_body">You can share the software and your changed versions of it.</string>
+    <string name="license_permission_patent">Patent use</string>
+    <string name="license_permission_patent_body">Contributors grant you a license to use their patents in it.</string>
+    <string name="license_permission_private">Private use</string>
+    <string name="license_permission_private_body">You can use and change it for yourself without sharing anything.</string>
+    <string name="license_condition_notice">License and copyright notice</string>
+    <string name="license_condition_notice_body">Keep the copyright notice and a copy of the license with every copy you share.</string>
+    <string name="license_condition_changes">State changes</string>
+    <string name="license_condition_changes_body">Say what you changed, and when.</string>
+    <string name="license_condition_source">Disclose source</string>
+    <string name="license_condition_source_body">When you distribute it, make the source code available.</string>
+    <string name="license_condition_same">Same license</string>
+    <string name="license_condition_same_body">Versions you distribute must be under the same license, GPL-3.0.</string>
+    <string name="license_limitation_liability">Liability</string>
+    <string name="license_limitation_liability_body">The authors can\'t be held liable for damages.</string>
+    <string name="license_limitation_warranty">Warranty</string>
+    <string name="license_limitation_warranty_body">The software comes without any warranty.</string>
+    <string name="license_full_text">Full license text</string>
+    <string name="license_text_unavailable">The license text couldn\'t be loaded.</string>
 </resources>

@@ -40,11 +40,14 @@ Native Android client for the Downtify self-hosted music server. Kotlin, Jetpack
 ## Theming and UI
 
 - Use the real Material 3 components; no look-alikes. Colors come from `MaterialTheme.colorScheme` — never hard-code hex values in screens. Brand tokens live in `core/designsystem/theme/Color.kt` (dark is the default look; light matches `Tokens.dc.html`). Dynamic color is opt-in (Settings).
-- Type: Sora (display/headline/titleLarge), DM Sans (everything else), as Google downloadable fonts — `theme/Type.kt`. Shapes in `theme/Shape.kt`, spacing on a 4 dp grid via `Spacing`.
+- Type: by default Sora (display/headline/titleLarge) and DM Sans (everything else), as Google downloadable fonts — `theme/Type.kt`. The user can switch to the system font or Google Sans Flex (`AppFont` in `:core:model`, `downtifyTypography(font)`). Don't set a `fontFamily` in a screen unless it is a preview of a choice.
+- Pure black (`amoled` setting): `ColorScheme.amoled()` in `theme/Theme.kt` turns the dark background and base surfaces black and darkens the raised ones; `MainActivity` also paints the window black. Use `surfaceContainer*` roles for cards so they stay visible on it.
+- Settings and About use `GroupedList` (`ui/common/GroupedList.kt`), a thin wrapper over Material 3 Expressive's `SegmentedListItem` (there is no `GroupedListItem` in Material 3). It needs **material3 1.5.0-beta01** (`libs.versions.toml`); BOM-resolved 1.4.0 doesn't have it. Move to the stable 1.5 when it ships. Shapes in `theme/Shape.kt`, spacing on a 4 dp grid via `Spacing`.
 - Now Playing, the album header and the mini player take their surface from the cover (`rememberCoverColors`); the play button stays `primary`.
 - Icons: Material Symbols Rounded as vector drawables in `:core:designsystem` (`DowntifyIcons`), outlined at rest and filled when selected.
 - Edge-to-edge: pad with `WindowInsets`, don't fight the system bars. 48 dp minimum touch targets. Every screen works in `NavigationBar` (compact) and `NavigationRail` (medium+).
-- Every user-visible string goes in `app/src/main/res/values/strings.xml`, ready for translation.
+- Every user-visible string goes in `app/src/main/res/values/strings.xml` **and in the seven translations** (`values-bg|el|es|fr|hu|pt-rBR|tr`): the languages of the Downtify web app, English being the fallback and `resources.properties`' default. Lint fails on a missing translation. Keep `localeFilters` in `app/build.gradle.kts` in step with the folders (it also feeds `generateLocaleConfig`, the per-app language list). Strings that must not be translated (brand names, the license name) are `translatable="false"`. Plurals need `one` and `other`, plus `many` for es, fr and pt-BR. Take the web app's terms (`~/git/downtify/frontend/src/i18n/locales`) when a word exists there.
+- `app/src/main/res/raw/license.txt` is a copy of the repository's `LICENSE` (the License screen shows it); `LicenseTextTest` fails when they differ.
 - Each screen has `@PreviewLightDark` previews built from `ui/common/PreviewData`.
 
 ## Testing and quality

@@ -8,6 +8,7 @@ android {
 }
 
 dependencies {
+    implementation(projects.core.model)
     api(libs.compose.material3)
     api(libs.compose.ui)
     api(libs.compose.foundation)

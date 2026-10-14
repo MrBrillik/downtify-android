@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.henriquesebastiao.downtify.core.model.AppFont
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import java.util.UUID
 import javax.inject.Inject
@@ -21,6 +22,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         UserSettings(
             theme = enumOr(prefs[THEME], defaults.theme),
             dynamicColor = prefs[DYNAMIC_COLOR] ?: defaults.dynamicColor,
+            amoled = prefs[AMOLED] ?: defaults.amoled,
+            font = AppFont.of(prefs[FONT]),
             wifiQuality = StreamQuality.decode(prefs[WIFI_QUALITY]) ?: defaults.wifiQuality,
             mobileQuality = StreamQuality.decode(prefs[MOBILE_QUALITY]) ?: defaults.mobileQuality,
             libraryLayout = enumOr(prefs[LIBRARY_LAYOUT], defaults.libraryLayout),
@@ -36,6 +39,14 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
 
     suspend fun setDynamicColor(value: Boolean) {
         store.edit { it[DYNAMIC_COLOR] = value }
+    }
+
+    suspend fun setAmoled(value: Boolean) {
+        store.edit { it[AMOLED] = value }
+    }
+
+    suspend fun setFont(value: AppFont) {
+        store.edit { it[FONT] = value.name }
     }
 
     suspend fun setWifiQuality(value: StreamQuality) {
@@ -76,6 +87,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
     private companion object {
         val THEME = stringPreferencesKey("theme")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val AMOLED = booleanPreferencesKey("amoled")
+        val FONT = stringPreferencesKey("font")
         val WIFI_QUALITY = stringPreferencesKey("wifi_quality")
         val MOBILE_QUALITY = stringPreferencesKey("mobile_quality")
         val LIBRARY_LAYOUT = stringPreferencesKey("library_layout")

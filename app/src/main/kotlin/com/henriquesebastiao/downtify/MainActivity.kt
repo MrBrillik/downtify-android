@@ -1,6 +1,7 @@
 package com.henriquesebastiao.downtify
 
 import android.content.Intent
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -15,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.henriquesebastiao.downtify.core.data.settings.ThemeMode
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
+import com.henriquesebastiao.downtify.core.model.AppFont
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.ui.DowntifyApp
 import dagger.hilt.android.AndroidEntryPoint
@@ -50,7 +52,19 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
                 onDispose {}
             }
-            DowntifyTheme(darkTheme = darkTheme, dynamicColor = settings?.dynamicColor == true) {
+            val amoled = darkTheme && settings?.amoled == true
+            // The window shows through during transitions and when the keyboard resizes the screen.
+            DisposableEffect(amoled) {
+                val original = window.decorView.background
+                if (amoled) window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
+                onDispose { if (amoled) window.setBackgroundDrawable(original) }
+            }
+            DowntifyTheme(
+                darkTheme = darkTheme,
+                dynamicColor = settings?.dynamicColor == true,
+                amoled = settings?.amoled == true,
+                font = settings?.font ?: AppFont.Default,
+            ) {
                 DowntifyApp(viewModel = viewModel)
             }
         }

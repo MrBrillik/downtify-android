@@ -41,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -243,7 +245,26 @@ private fun SortRow(
     }
 }
 
-private val gridCells = GridCells.Adaptive(minSize = 160.dp)
+/**
+ * Album and playlist covers: as many columns as fit [CoverGridMinSize] each, but never fewer than two.
+ * `Adaptive(160.dp)` alone gave one huge cover on a 360 dp phone (360 - 2 x 16 padding leaves room for
+ * 1.9 columns once the 16 dp gap is counted).
+ */
+internal class AtLeastTwoColumns(private val minSize: Dp) : GridCells {
+    override fun Density.calculateCrossAxisCellSizes(availableSize: Int, spacing: Int): List<Int> {
+        val count = ((availableSize + spacing) / (minSize.roundToPx() + spacing)).coerceAtLeast(MIN_COLUMNS)
+        val room = availableSize - spacing * (count - 1)
+        // Spread the remainder pixels, so the cells add up to the available width exactly.
+        return List(count) { room / count + if (it < room % count) 1 else 0 }
+    }
+
+    private companion object {
+        const val MIN_COLUMNS = 2
+    }
+}
+
+private val CoverGridMinSize = 160.dp
+private val gridCells = AtLeastTwoColumns(CoverGridMinSize)
 private val gridPadding = PaddingValues(start = Spacing.screen, end = Spacing.screen, bottom = Spacing.xl)
 
 @Composable

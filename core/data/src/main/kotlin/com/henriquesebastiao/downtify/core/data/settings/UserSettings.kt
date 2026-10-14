@@ -1,5 +1,6 @@
 package com.henriquesebastiao.downtify.core.data.settings
 
+import com.henriquesebastiao.downtify.core.model.AppFont
 import com.henriquesebastiao.downtify.core.model.OfflinePlanner
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 
@@ -13,6 +14,9 @@ data class UserSettings(
     val theme: ThemeMode = ThemeMode.System,
     /** Material You wallpaper colors instead of Downtify green. Off by default. */
     val dynamicColor: Boolean = false,
+    /** True black instead of the dark gray in the dark theme, for OLED screens. Off by default. */
+    val amoled: Boolean = false,
+    val font: AppFont = AppFont.Default,
     val wifiQuality: StreamQuality = StreamQuality.Original,
     val mobileQuality: StreamQuality = StreamQuality.MobileDefault,
     val libraryLayout: LibraryLayout = LibraryLayout.Grid,

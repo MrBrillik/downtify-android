@@ -124,4 +124,28 @@ object DowntifyIcons {
     @DrawableRes val Podcasts = R.drawable.ic_podcasts
 
     @DrawableRes val Explore = R.drawable.ic_explore
+
+    @DrawableRes val BugReport = R.drawable.ic_bug_report
+
+    @DrawableRes val Code = R.drawable.ic_code
+
+    @DrawableRes val License = R.drawable.ic_gavel
+
+    @DrawableRes val Terms = R.drawable.ic_policy
+
+    @DrawableRes val Donate = R.drawable.ic_volunteer_activism
+
+    @DrawableRes val Language = R.drawable.ic_translate
+
+    @DrawableRes val Font = R.drawable.ic_text_fields
+
+    @DrawableRes val Contrast = R.drawable.ic_contrast
+
+    @DrawableRes val Copy = R.drawable.ic_content_copy
+
+    @DrawableRes val OpenInNew = R.drawable.ic_open_in_new
+
+    @DrawableRes val Coffee = R.drawable.ic_coffee
+
+    @DrawableRes val Description = R.drawable.ic_description
 }

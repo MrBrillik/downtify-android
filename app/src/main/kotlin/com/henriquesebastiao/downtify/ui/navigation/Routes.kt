@@ -16,6 +16,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SettingsRoute
 
+@Serializable data object AboutRoute
+
+@Serializable data object LicenseRoute
+
 @Serializable data class AlbumRoute(val albumId: String)
 
 @Serializable data class ArtistRoute(val artistId: String)

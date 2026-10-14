@@ -40,7 +40,9 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,8 +59,8 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.CoverArt
@@ -516,9 +518,15 @@ private fun SeekBar(state: PlayerState, colors: CoverColors, onSeek: (Long) -> U
             inactiveTrackColor = colors.onSurface.copy(alpha = 0.22f),
         )
         val interactionSource = remember { MutableInteractionSource() }
+        // The slider's own state follows the player's position — except while the finger is on it.
+        val sliderState = rememberSliderState()
+        LaunchedEffect(value) { sliderState.value = value }
         Slider(
-            value = value,
-            onValueChange = { dragging = it },
+            state = sliderState,
+            onValueChange = {
+                sliderState.value = it
+                dragging = it
+            },
             onValueChangeFinished = {
                 dragging?.let { onSeek((it * duration).toLong()) }
                 dragging = null

@@ -1,18 +1,21 @@
 package com.henriquesebastiao.downtify.feature.settings
 
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
-import androidx.compose.foundation.clickable
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -20,13 +23,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -37,13 +37,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -57,16 +56,28 @@ import com.henriquesebastiao.downtify.core.data.settings.UserSettings
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyLogo
 import com.henriquesebastiao.downtify.core.designsystem.component.StatusPill
+import com.henriquesebastiao.downtify.core.designsystem.theme.DmSans
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
+import com.henriquesebastiao.downtify.core.designsystem.theme.GoogleSansFlex
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
+import com.henriquesebastiao.downtify.core.model.AppFont
 import com.henriquesebastiao.downtify.core.model.OfflinePlanner
 import com.henriquesebastiao.downtify.core.model.StreamFormat
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import com.henriquesebastiao.downtify.core.model.Transcoding
 import com.henriquesebastiao.downtify.core.model.formatBytes
+import com.henriquesebastiao.downtify.ui.common.GroupTitle
+import com.henriquesebastiao.downtify.ui.common.GroupedList
+import com.henriquesebastiao.downtify.ui.common.GroupedRow
+import com.henriquesebastiao.downtify.ui.common.RowAction
 
 @Composable
-fun SettingsRoute(onBack: () -> Unit, modifier: Modifier = Modifier, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsRoute(
+    onBack: () -> Unit,
+    onOpenAbout: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     SettingsScreen(
@@ -77,6 +88,10 @@ fun SettingsRoute(onBack: () -> Unit, modifier: Modifier = Modifier, viewModel: 
             onMobileQuality = viewModel::setMobileQuality,
             onTheme = viewModel::setTheme,
             onDynamicColor = viewModel::setDynamicColor,
+            onAmoled = viewModel::setAmoled,
+            onFont = viewModel::setFont,
+            onOpenAbout = onOpenAbout,
+            onOpenLanguage = { openAppLanguageSettings(context) },
             onDownloadWifiOnly = viewModel::setDownloadWifiOnly,
             onOfflineLimit = viewModel::setOfflineLimit,
             onUnpair = viewModel::unpair,
@@ -94,13 +109,17 @@ data class SettingsActions(
     val onMobileQuality: (StreamQuality) -> Unit = {},
     val onTheme: (ThemeMode) -> Unit = {},
     val onDynamicColor: (Boolean) -> Unit = {},
+    val onAmoled: (Boolean) -> Unit = {},
+    val onFont: (AppFont) -> Unit = {},
+    val onOpenAbout: () -> Unit = {},
+    val onOpenLanguage: () -> Unit = {},
     val onDownloadWifiOnly: (Boolean) -> Unit = {},
     val onOfflineLimit: (Long) -> Unit = {},
     val onUnpair: () -> Unit = {},
     val onOpenWeb: () -> Unit = {},
 )
 
-private enum class SettingsDialog { WifiQuality, MobileQuality, Theme, OfflineLimit, Unpair }
+private enum class SettingsDialog { WifiQuality, MobileQuality, Theme, Font, OfflineLimit, Unpair }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,80 +149,40 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
         ) {
             ServerCard(state, onChangeServer = { dialog = SettingsDialog.Unpair }, onOpenWeb = actions.onOpenWeb)
 
-            SectionTitle(stringResource(R.string.settings_playback))
-            SettingRow(
-                icon = DowntifyIcons.Wifi,
-                title = stringResource(R.string.settings_quality_wifi),
-                summary = qualitySummary(state.settings.wifiQuality),
-                onClick = { dialog = SettingsDialog.WifiQuality },
-            )
-            SettingRow(
-                icon = DowntifyIcons.Cellular,
-                title = stringResource(R.string.settings_quality_mobile),
-                summary = if (state.transcoding.available) {
-                    qualitySummary(state.settings.mobileQuality)
-                } else {
-                    stringResource(R.string.settings_quality_no_transcoding)
-                },
-                enabled = state.transcoding.available,
-                onClick = { dialog = SettingsDialog.MobileQuality },
-            )
+            GroupTitle(stringResource(R.string.settings_playback))
+            GroupedList(playbackRows(state) { dialog = it })
 
-            SectionTitle(stringResource(R.string.settings_downloads))
-            SwitchRow(
-                icon = DowntifyIcons.Downloads,
-                title = stringResource(R.string.settings_download_wifi_only),
-                summary = stringResource(R.string.settings_download_wifi_only_body),
-                checked = state.settings.downloadWifiOnly,
-                onCheckedChange = actions.onDownloadWifiOnly,
-            )
-            SettingRow(
-                icon = DowntifyIcons.Storage,
-                title = stringResource(R.string.settings_offline_limit),
-                summary = stringResource(
-                    R.string.settings_offline_limit_summary,
-                    limitLabel(state.settings.offlineLimitBytes),
-                    formatBytes(state.offlineUsedBytes),
+            GroupTitle(stringResource(R.string.settings_downloads))
+            GroupedList(downloadRows(state, actions) { dialog = it })
+
+            GroupTitle(stringResource(R.string.settings_appearance))
+            GroupedList(appearanceRows(state, actions) { dialog = it })
+
+            GroupTitle(stringResource(R.string.settings_about))
+            GroupedList(
+                listOf(
+                    GroupedRow(
+                        title = stringResource(R.string.settings_about_entry),
+                        summary = stringResource(R.string.settings_app_version, BuildConfig.VERSION_NAME),
+                        icon = DowntifyIcons.Info,
+                        action = RowAction.Click(actions.onOpenAbout, DowntifyIcons.ChevronRight),
+                    ),
                 ),
-                onClick = { dialog = SettingsDialog.OfflineLimit },
             )
 
-            SectionTitle(stringResource(R.string.settings_appearance))
-            SettingRow(
-                icon = DowntifyIcons.DarkMode,
-                title = stringResource(R.string.settings_theme),
-                summary = stringResource(state.settings.theme.label),
-                onClick = { dialog = SettingsDialog.Theme },
+            GroupTitle(stringResource(R.string.settings_server))
+            GroupedList(
+                listOf(
+                    GroupedRow(
+                        title = stringResource(R.string.settings_unpair),
+                        summary = stringResource(R.string.settings_unpair_body),
+                        icon = DowntifyIcons.Unpair,
+                        titleColor = MaterialTheme.colorScheme.error,
+                        action = RowAction.Click({ dialog = SettingsDialog.Unpair }),
+                    ),
+                ),
             )
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                SwitchRow(
-                    icon = DowntifyIcons.Palette,
-                    title = stringResource(R.string.settings_dynamic_color),
-                    summary = stringResource(R.string.settings_dynamic_color_body),
-                    checked = state.settings.dynamicColor,
-                    onCheckedChange = actions.onDynamicColor,
-                )
-            }
-
-            SectionTitle(stringResource(R.string.settings_about))
-            SettingRow(
-                icon = DowntifyIcons.Info,
-                title = stringResource(R.string.settings_app_version, BuildConfig.VERSION_NAME),
-                summary = if (state.apiVersion >
-                    0
-                ) {
-                    stringResource(R.string.settings_server_api, state.apiVersion)
-                } else {
-                    null
-                },
-            )
-            SettingRow(
-                icon = DowntifyIcons.Unpair,
-                title = stringResource(R.string.settings_unpair),
-                summary = stringResource(R.string.settings_unpair_body),
-                titleColor = MaterialTheme.colorScheme.error,
-                onClick = { dialog = SettingsDialog.Unpair },
-            )
+            Spacer(Modifier.height(Spacing.xl))
         }
     }
 
@@ -232,6 +211,16 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             selected = state.settings.theme,
             label = { stringResource(it.label) },
             onSelect = actions.onTheme,
+            onDismiss = { dialog = null },
+        )
+
+        SettingsDialog.Font -> ChoiceDialog(
+            title = stringResource(R.string.settings_font),
+            options = AppFont.entries,
+            selected = state.settings.font,
+            label = { stringResource(it.label) },
+            labelFont = { it.previewFamily },
+            onSelect = actions.onFont,
             onDismiss = { dialog = null },
         )
 
@@ -337,50 +326,115 @@ private fun ConnectionPill(connection: ConnectionState) {
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(
-            start = Spacing.screen,
-            end = Spacing.screen,
-            top = Spacing.xl,
-            bottom = Spacing.xs,
-        ).semantics {
-            heading()
+private fun playbackRows(state: SettingsUiState, open: (SettingsDialog) -> Unit): List<GroupedRow> = listOf(
+    GroupedRow(
+        title = stringResource(R.string.settings_quality_wifi),
+        summary = qualitySummary(state.settings.wifiQuality),
+        icon = DowntifyIcons.Wifi,
+        action = RowAction.Click({ open(SettingsDialog.WifiQuality) }),
+    ),
+    GroupedRow(
+        title = stringResource(R.string.settings_quality_mobile),
+        summary = if (state.transcoding.available) {
+            qualitySummary(state.settings.mobileQuality)
+        } else {
+            stringResource(R.string.settings_quality_no_transcoding)
         },
-    )
-}
+        icon = DowntifyIcons.Cellular,
+        enabled = state.transcoding.available,
+        action = RowAction.Click({ open(SettingsDialog.MobileQuality) }),
+    ),
+)
 
 @Composable
-private fun SettingRow(
-    icon: Int,
-    title: String,
-    summary: String?,
-    enabled: Boolean = true,
-    titleColor: Color = Color.Unspecified,
-    onClick: (() -> Unit)? = null,
-) {
-    ListItem(
-        headlineContent = { Text(title, color = titleColor) },
-        supportingContent = summary?.let { { Text(it) } },
-        leadingContent = { Icon(painterResource(icon), contentDescription = null) },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier,
-    )
-}
+private fun downloadRows(
+    state: SettingsUiState,
+    actions: SettingsActions,
+    open: (SettingsDialog) -> Unit,
+): List<GroupedRow> = listOf(
+    GroupedRow(
+        title = stringResource(R.string.settings_download_wifi_only),
+        summary = stringResource(R.string.settings_download_wifi_only_body),
+        icon = DowntifyIcons.Downloads,
+        action = RowAction.Toggle(state.settings.downloadWifiOnly, actions.onDownloadWifiOnly),
+    ),
+    GroupedRow(
+        title = stringResource(R.string.settings_offline_limit),
+        summary = stringResource(
+            R.string.settings_offline_limit_summary,
+            limitLabel(state.settings.offlineLimitBytes),
+            formatBytes(state.offlineUsedBytes),
+        ),
+        icon = DowntifyIcons.Storage,
+        action = RowAction.Click({ open(SettingsDialog.OfflineLimit) }),
+    ),
+)
 
 @Composable
-private fun SwitchRow(icon: Int, title: String, summary: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = { Text(summary) },
-        leadingContent = { Icon(painterResource(icon), contentDescription = null) },
-        trailingContent = { Switch(checked = checked, onCheckedChange = null) },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange),
+private fun appearanceRows(
+    state: SettingsUiState,
+    actions: SettingsActions,
+    open: (SettingsDialog) -> Unit,
+): List<GroupedRow> = buildList {
+    add(
+        GroupedRow(
+            title = stringResource(R.string.settings_theme),
+            summary = stringResource(state.settings.theme.label),
+            icon = DowntifyIcons.DarkMode,
+            action = RowAction.Click({ open(SettingsDialog.Theme) }),
+        ),
     )
+    add(
+        GroupedRow(
+            title = stringResource(R.string.settings_amoled),
+            summary = stringResource(R.string.settings_amoled_body),
+            icon = DowntifyIcons.Contrast,
+            action = RowAction.Toggle(state.settings.amoled, actions.onAmoled),
+        ),
+    )
+    add(
+        GroupedRow(
+            title = stringResource(R.string.settings_font),
+            summary = stringResource(state.settings.font.label),
+            icon = DowntifyIcons.Font,
+            action = RowAction.Click({ open(SettingsDialog.Font) }),
+        ),
+    )
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        add(
+            GroupedRow(
+                title = stringResource(R.string.settings_dynamic_color),
+                summary = stringResource(R.string.settings_dynamic_color_body),
+                icon = DowntifyIcons.Palette,
+                action = RowAction.Toggle(state.settings.dynamicColor, actions.onDynamicColor),
+            ),
+        )
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        add(
+            GroupedRow(
+                title = stringResource(R.string.settings_language),
+                summary = stringResource(R.string.settings_language_summary, currentLanguageName()),
+                icon = DowntifyIcons.Language,
+                action = RowAction.Click(actions.onOpenLanguage, DowntifyIcons.OpenInNew),
+            ),
+        )
+    }
+}
+
+/** The name of the language the app shows now, in that language. */
+@Composable
+private fun currentLanguageName(): String {
+    val locale = LocalLocale.current.platformLocale
+    return locale.getDisplayName(locale).replaceFirstChar { it.titlecase(locale) }
+}
+
+/** Android 13+ keeps a language per app; its screen is where the user picks it. */
+private fun openAppLanguageSettings(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS, Uri.fromParts("package", context.packageName, null))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
 }
 
 @Composable
@@ -391,6 +445,7 @@ private fun <T> ChoiceDialog(
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
+    labelFont: (T) -> FontFamily? = { null },
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -410,7 +465,11 @@ private fun <T> ChoiceDialog(
                         horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                     ) {
                         RadioButton(selected = option == selected, onClick = null)
-                        Text(label(option), style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            label(option),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontFamily = labelFont(option),
+                        )
                     }
                 }
             }
@@ -439,6 +498,21 @@ private val StreamFormat.displayName: String
         StreamFormat.Opus -> "Opus"
         StreamFormat.Aac -> "AAC"
         StreamFormat.Mp3 -> "MP3"
+    }
+
+private val AppFont.label: Int
+    get() = when (this) {
+        AppFont.Downtify -> R.string.settings_font_downtify
+        AppFont.System -> R.string.settings_font_system
+        AppFont.GoogleSansFlex -> R.string.settings_font_google_sans_flex
+    }
+
+/** Each option in its own typeface, so the list is its own preview. */
+private val AppFont.previewFamily: FontFamily
+    get() = when (this) {
+        AppFont.Downtify -> DmSans
+        AppFont.System -> FontFamily.Default
+        AppFont.GoogleSansFlex -> GoogleSansFlex
     }
 
 private val ThemeMode.label: Int
