@@ -1,0 +1,54 @@
+# Labels pull requests by the files they change (actions/labeler, see
+# .github/workflows/labeler.yml). A label that doesn't exist yet is created.
+
+app:
+  - changed-files:
+      - any-glob-to-any-file:
+          - app/src/main/**
+
+core:
+  - changed-files:
+      - any-glob-to-any-file:
+          - core/**
+
+translations:
+  - changed-files:
+      - any-glob-to-any-file:
+          - app/src/main/res/values-*/**
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/src/test/**"
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - build-logic/**
+          - gradle/**
+          - gradlew
+          - gradlew.bat
+          - "**/*.gradle.kts"
+          - gradle.properties
+          - app/proguard-rules.pro
+          - config/**
+          - Makefile
+          - build-apk.ps1
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - gradle/libs.versions.toml
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - README.md
+          - CHANGELOG
+          - CLAUDE.md
