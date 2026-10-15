@@ -78,6 +78,18 @@ class StreamResolver @Inject constructor(
         return StreamPolicy.select(s.wifiQuality, s.mobileQuality, network.isMetered, transcoding)
     }
 
+    /**
+     * The address [trackId] would stream from if it started now, when that asks the
+     * server for a transcoded copy: null for an offline copy, the original file, or no
+     * session. Touches the disk (the offline check): call it off the main thread.
+     */
+    fun transcodedUrl(trackId: String): String? {
+        if (offline.localFile(trackId) != null) return null
+        val quality = qualityNow().takeUnless { it.isOriginal } ?: return null
+        val session = sessions.current ?: return null
+        return ServerUrls.stream(session.baseUrl, trackId, quality)
+    }
+
     /** The quality [trackId] is streaming in, when it has started. */
     fun qualityOf(trackId: String): StreamQuality? = chosen[trackId]
 

@@ -31,6 +31,7 @@ import com.henriquesebastiao.downtify.core.data.podcasts.PodcastsRepository
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.model.PlayQueue
 import com.henriquesebastiao.downtify.core.model.StreamIds
+import com.henriquesebastiao.downtify.core.network.di.StreamingClient
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -46,6 +47,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
 
 /**
  * ExoPlayer in a [MediaSessionService]: the media notification, lock screen,
@@ -76,12 +78,19 @@ class PlaybackService : MediaSessionService() {
 
     @Inject lateinit var catalog: CatalogRepository
 
+    @Inject lateinit var resolver: StreamResolver
+
+    @Inject
+    @StreamingClient
+    lateinit var streamingClient: OkHttpClient
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var session: MediaSession? = null
     private var listens: ListenTracker? = null
     private var activity: ActivityTracker? = null
     private var episodes: EpisodeProgressTracker? = null
     private var prefetch: StreamPrefetchTracker? = null
+    private var warmer: TranscodeWarmer? = null
     private val likeCommand = SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)
     private val addToQueueCommand = SessionCommand(ACTION_ADD_TO_QUEUE, Bundle.EMPTY)
     private val moveInQueueCommand = SessionCommand(ACTION_MOVE_IN_QUEUE, Bundle.EMPTY)
@@ -120,6 +129,7 @@ class PlaybackService : MediaSessionService() {
         activity = ActivityTracker(player, activityReporter, scope).also { it.start() }
         episodes = EpisodeProgressTracker(player, podcasts, scope).also { it.start() }
         prefetch = StreamPrefetchTracker(player, catalog, scope).also { it.start() }
+        warmer = TranscodeWarmer(player, resolver, streamingClient, scope).also { it.start() }
         keepLikeButtonCurrent(player)
         stopWhenSignedOut(player)
     }
@@ -148,6 +158,7 @@ class PlaybackService : MediaSessionService() {
         activity?.stop()
         episodes?.stop()
         prefetch?.stop()
+        warmer?.stop()
         scope.cancel()
         session?.run {
             player.release()
